@@ -1,0 +1,41 @@
+lib_include hash
+lib_include on_exit_hook
+
+# Returns a color
+# @1 - foreground color number
+# @2 - background color number
+# @3 - boldness (Optional)
+# @output - correspondig escape sequence
+color_make_raw()
+{
+    echo -en "\033[${3-0}${1:+;3}$1${2+;4}$2m"
+}
+
+# Return a color number corresponding to the ascii color name
+# (this map is correct for my colorscheme, and that's all I care)
+# @1 - color ascii name
+# @output - corresponding color number
+color_get_num()
+{
+    case "$1" in
+    black|BLACK) echo 0 ;;
+    red|RED) echo 1 ;;
+    green|GREEN) echo 2 ;;
+    yellow|YELLOW) echo 3 ;;
+    blue|BLUE) echo 4 ;;
+    violet|VIOLET) echo 5 ;;
+    aqua|AQUA) echo 6 ;;
+    white|WHITE) echo 7 ;;
+    esac
+}
+
+# Return color escape sequence
+# @1 - foreground color name
+# @2 - background color name
+# @output - corresponding escape sequence
+color_make()
+{
+    color_make_raw $(color_get_num "$1") $(color_get_num "$2") "${3:+1}"
+}
+
+# vim: ft=sh :

@@ -1,0 +1,133 @@
+# vim: set filetype=sh :
+
+[ -z "$SUDOPRG" ] && SUDOPRG=sudo
+
+export IW_IF=wlan0
+export IW_MOD=rt2860sta
+
+# Get ip range
+gir()
+{
+    for i in $(seq $1 ${2-$1}); do
+	"$SUDOPRG" ifconfig eth0 down
+	"$SUDOPRG" ifconfig eth0 hw ether 00:22:15:8c:b1:4$i
+	"$SUDOPRG" ifconfig eth0 up
+	"$SUDOPRG" dhclient eth0
+	sleep 1
+    done
+}
+
+# Scan for mac addresses of APs for a given ESSID
+# $1 - interface
+# $2 - essid (optional)
+iw-scan()
+{
+    local IF="$1"; shift
+    local ESSID="${1:-ESSID}"
+
+    [ -z "$IF" ] && return 1
+
+    "$SUDOPRG" ifconfig "$IF" up
+    "$SUDOPRG" iwlist "$IF" scan | grep "$ESSID" -B2 | \
+	grep -o '[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]'
+}
+
+# Connect to a given AP:
+# $1 - interface
+# $2 - AP mac address
+iw-connect()
+{
+    local IF="$1"; shift
+    local AP="$1"
+
+    [ -z "$AP" ] && return 1
+
+    "$SUDOPRG" ifconfig "$IF" 0 up && sleep 1s && \
+    "$SUDOPRG" iwconfig "$IF" mode managed && \
+    "$SUDOPRG" iwconfig "$IF" ap "$AP" && sleep 1s && \
+    { "$SUDOPRG" dhclient -v "$IF" 2>&1 | tee /dev/stdout /dev/stderr | \
+	tail -1 | grep ^bound >/dev/null; } 2>&1
+}
+
+# Connect to a given ESSID
+# $1 - essid
+iw-select()
+{
+    local ESSID="$1"
+    local mac
+
+    while true; do
+	select mac in $(iw-scan "$IW_IF" "$ESSID"); do
+	    iw-connect "$IW_IF" "$mac" && break 2 || break
+	done
+    done
+}
+
+# List all available networks in format: ESSID AP_MAC ENCRYPTION
+# TODO: encryption type; connection to a chosen network using wpa_supplicant
+# $1 - wlan device (optional)
+iw-list()
+{
+    local ap list if="${1:-${IW_IF}}"
+
+    OIFS="$IFS"; IFS='\n'
+    local list=$("$SUDOPRG" iwlist "$if" scan | awk '
+	BEGIN {
+	    RS=" Cell [0-9]* - "; FS="\n";
+	    addr[0] = "Address";
+	    essid[0] = "SSID";
+	    enc[0] = "Encryption";
+	}
+	# Skip the header
+	NR == 1 { next }
+	/.*/ {
+	    addr[NR - 1]=$1; sub(/ *Address: /, "", addr[NR - 1]);
+	    essid[NR - 1]=$3; sub(/ *ESSID:/, "", essid[NR - 1]);
+	    sub(/^"/, "", essid[NR - 1]); sub(/"$/, "", essid[NR - 1]);
+	    enc[NR - 1]=$7; sub(/ *Encryption key:/, "", enc[NR - 1]);
+	}
+	END {
+	    printf("%3s %-40.40s %-20s %s\n", "No.", essid[0], addr[0], enc[0]);
+	    for (j=1; j<NR; j++)
+		printf("%2d) %-40.40s %-20s %s\n", j, essid[j], addr[j], enc[j]);
+	}')
+
+    echo "$list"
+    IFS=$OIFS
+    echo -n "#? "
+    read no
+    set -- $(echo "$list" | awk 'NR == '$[ $no + 1 ]' {printf("%s %s %s", $2, $3, $4)}')
+
+    echo "$@"
+    [ "$3" == off ] && iw-connect "$if" "$2" || \
+	>%2 echo 'Sorry, encrypted networks are not supported. ' && \
+	>%2 echo 'Please, configure manually wpa_supplicant'
+}
+
+iw-grep()
+{
+    "$SUDOPRG" iwlist "$IW_IF" scan | awk '
+        BEGIN { RS="          Cell "; }
+	/'"$1"'/ { print "          Cell " $0; }'
+}
+
+iw-reset()
+{
+    local if="${1:-${IW_IF}}"
+    local mod="${2:-${IW_MOD}}"
+
+    sudo ifconfig "$if" down && sudo rmmod "$mod" && sleep 3s && \
+	sudo modprobe "$mod"  && sudo ifconfig "$if" up && \
+	sudo iwconfig "$if" mode managed
+}
+
+alias iw-g1='iw-connect "$IW_IF" "$(iw-scan "$IW_IF" LowestPrices)"'
+alias iw-tech='iw-connect "$IW_IF" "$(iw-scan "$IW_IF" Techwifi | head -1)"'
+
+[ -f /sbin/ifconfig ] && alias ifconfig=/sbin/ifconfig
+[ -f /sbin/iwconfig ] && alias iwconfig=/sbin/iwconfig
+
+# Causes problems on macos
+# alias ping-default-gateway="ping $(/sbin/route -n | awk '/^0.0.0.0 / { print $2}')"
+
+# DSL lab MAC addr: 00:1C:25:D5:59:40

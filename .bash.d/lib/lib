@@ -1,0 +1,17 @@
+
+export BASH_LIB="lib"
+export BASH_LIB_D="$BASH_D/lib"
+
+lib_include()
+{
+    local name="$1"
+
+    [ "$name" = lib ] && return 0
+    grep -Ee '(^'"$name"'$|^'"$name"':|:'"$name"':|:'"$name"'$)' \
+	<<< "$BASH_LIB" >/dev/null && return 0
+
+    export BASH_LIB="${BASH_LIB}:${name}"
+    . "$BASH_LIB_D/$name"
+}
+
+# vim: ft=sh :

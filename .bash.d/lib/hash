@@ -1,0 +1,54 @@
+# Found somewhere over the Web
+
+# Initiate a hash
+# @return - name of the hash
+hash_init()
+{
+    echo "$(mktemp /tmp/bash_hash.XXXXXX)"
+}
+
+# Initiate a named hash
+# @return - name of the hash
+hash_named_init()
+{
+    local hf="$(hash_path "$1")"
+
+    touch "$hf"
+    echo "$hf"
+}
+
+# Return the full path to a hash file
+# @1 - hash name
+# @output - hash file
+hash_path()
+{
+    # Anonymous hash
+    [ "${1:0:1}" = / ] && echo $1 && return 0
+
+    # Named hash
+    echo "/tmp/bash_hash.name.$1"
+}
+
+# Put a  key-value pair into hash
+# @1 - hash name
+# @2 - hash key
+# @3 - hash value
+hash_put()
+{
+    local hf="$(hash_path "$1")"
+
+    sed '/^'"$2"':.*$/d' -i "$hf"
+    echo "$2:$3" >> "$hf"
+}
+
+# Get a value associated with a given key
+# @1 - hash name
+# @2 - hash key
+hash_get()
+{
+    local hf="$(hash_path "$1")"
+
+    sed -n 's/^'"$2:"'//p' "$hf"
+}
+
+# vim: ft=sh :

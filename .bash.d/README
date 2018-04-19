@@ -1,0 +1,30 @@
+.bash.d/ hierarchy
+------------------
+
+(*) .bash.d/init/
+
+The directory .bash.d/init contains init scripts for bash.
+All the scripts under mask S<3-digit NUM>-*.sh in this directory are loaded
+automatically from .bashrc in a lexicographical order.
+The scripts whose <3-digit NUM> is less than 100 are loaded for both interactive and
+non-interactive shells. While the scripts with <3-digit NUM> greater or equal
+to 100 are loaded for interactive shell only.
+
+(*) .bash.d/lib/
+
+The directory .bash.d/lib contains bash libraries.
+A library can be either a set of utility functions, which are shared and used
+by multiple scripts or other libraries, or a well-defined ADT (like hash).
+Library API:
+- Initialization:
+     Just include the .bash.d/lib/lib file
+- Inclusion:
+     Use `lib_include' function defined in .bash.d/lib/lib.
+     This function ensures that each library is included just once.
+
+How to use
+----------
+
+Just move your script to .bash.d/init/ and rename it appropriately. Alternative
+way is to create a link in .bash.d/init/ to your script. Thus it will
+be loaded automatically for all next bash sessions.

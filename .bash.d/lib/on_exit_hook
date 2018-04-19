@@ -1,0 +1,10 @@
+# Removes a given file when shell is closed (not killed -9)
+# @1 - the filename
+# @output - the filename
+on_exit_remove_file()
+{
+    trap 'rm '"$1"' 2>/dev/null' 0 1 2 15
+    echo "$1"
+}
+
+# vim: ft=sh :

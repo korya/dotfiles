@@ -1,0 +1,1 @@
+../non-forking-editor.sh

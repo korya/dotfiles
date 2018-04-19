@@ -1,0 +1,224 @@
+## Environment vars
+
+export EASEA_TEMP_FILE=`mktemp`
+# Remove the file on exit
+trap 'rm '"$EASEA_TEMP_FILE" 0
+
+## Make wrappers for supported search commands
+
+# XXX: it would be nice to store the actual output. E.g. for
+# `es_grep tratata | grep blablabla' we save the output of the first
+# command `es_grep tratata'. While the correct behaviour is to save the output
+# of the whole command.
+# A possible solutions are:
+# 1. the terminal showing the output to the user should care it.
+# 2. patch bash to store the stdout output (if there was one) to a special var,
+#    which can be easily accessed (is it possible?).
+# 3. extend readline functionality. Can we define new substitution rules?
+#
+# Solutions notes:
+# 1. if the terminal had all the logic, this module would be useless
+#    when using some different terminal.
+# 2. Patching bash sources should not affect its syntax. Thus
+#    enabling/disabling should be done by `set`, `shopt` or their friends.
+
+es_grep()
+{
+    echo grep > $EASEA_TEMP_FILE
+    "${GREP_PROG:-grep}" --color=always "$@" | tee >( perl -le \
+	'while(<>) { s/\x1b(\[|\(|\))[;?0-9]*[0-9A-Za-z]//eg; print $_ };' | \
+	sed -n '/^$/!p' >> $EASEA_TEMP_FILE) >/dev/stdout
+}
+
+es_find()
+{
+    echo find > $EASEA_TEMP_FILE
+    "${FIND_PROG:-find}" "$@" | tee -a $EASEA_TEMP_FILE
+}
+
+es_review()
+{
+    local format
+
+    case "$1" in
+    to_me|from_me|show_bugs|for_bug)
+	[ "$1" == show_bugs ] && format=jbug || format=jreview
+	echo "$format" > $EASEA_TEMP_FILE
+	review "$@" | \
+	    tee >(grep '^|' | tail -n +2 | cut -d\  -f2 >> $EASEA_TEMP_FILE) >/dev/stdout
+	;;
+    *)
+	review "$@"
+	;;
+    esac
+}
+
+es_jcvs()
+{
+    case "$1" in
+    grep)
+	echo grep > $EASEA_TEMP_FILE
+	jcvs "$@" | tee -a $EASEA_TEMP_FILE
+	;;
+    up)
+	echo cvsup > $EASEA_TEMP_FILE
+	jcvs "$@" | tee >/dev/stdout >(cut -c3- >> $EASEA_TEMP_FILE)
+	;;
+    ann)
+	echo jreview > $EASEA_TEMP_FILE
+	jcvs "$@" | tee >/dev/stdout >(cut -d\  -f1 >> $EASEA_TEMP_FILE)
+	;;
+    *)
+	jcvs "$@"
+	;;
+    esac
+}
+
+es_svn()
+{
+    case "$1" in
+    stat|status)
+        echo cvsup > $EASEA_TEMP_FILE
+	"${SVN_PROG:-svn}" "$@" | \
+	    tee >/dev/stdout >(cut -c8- >> $EASEA_TEMP_FILE)
+	;;
+    *)
+        "${SVN_PROG:-svn}" "$@"
+        ;;
+    esac
+}
+
+es_git()
+{
+    if [ "$1" == "status" ] && [ "$2" == "-s" ]; then
+        echo cvsup > $EASEA_TEMP_FILE
+	"${GIT_PROG:-svn}" "$@" | \
+	    tee >/dev/stdout >(awk '{ print $2 }' >> $EASEA_TEMP_FILE)
+	return $?
+    fi
+
+    "${GIT_PROG:-svn}" "$@"
+}
+
+es_hw()
+{
+    case "$1" in
+    grep)
+	echo hw > $EASEA_TEMP_FILE
+	hw grep "$@" | tee >/dev/stdout \
+	    >(awk -F'|' '{
+	    gsub(/[ \t]+/, "");
+	    if ($2 ~ /^HW/)
+		printf("%s %s\n", $2, $3);
+	    }' >> $EASEA_TEMP_FILE)
+	;;
+    *)
+	hw "$@"
+	;;
+    esac
+}
+
+es_bugz()
+{
+    case "$1" in
+    data|recent)
+	echo jbug > $EASEA_TEMP_FILE
+	bugz "$@" | \
+	    tee >(grep '^|' | tail -n +2 | cut -d\  -f2 >> $EASEA_TEMP_FILE) >/dev/stdout
+	;;
+    *)
+	bugz "$@"
+	;;
+    esac
+}
+
+## Get the line
+
+easea()
+{
+    local format=`head -1 "$EASEA_TEMP_FILE"`
+    local vim="${2:-${VISUAL:-${EDITOR:-/usr/bin/vim}}}"
+    local line
+
+    if [ "${1:-1}" -gt 0 ]; then
+	line=`sed -n "$[ ${1:-1} + 1 ]{p;q}" "$EASEA_TEMP_FILE"`
+    else
+	line=`tail $1 "$EASEA_TEMP_FILE" | head -1`
+    fi
+
+    [ -z "$line" ] && return
+    echo "$line" >&2
+
+    case "$format" in
+    cvsup)
+	eval "$vim" "$line"
+	;;
+    grep)
+	local args=`echo $line | \
+	    sed -n -e 's/^\([^:]*\):\([0-9]*\):\([0-9]*\):.*$/\1 +\2/p' \
+	    -e 's/^\([^:]*\):\([0-9]*\):.*$/\1 +\2/p' \
+	    -e 's/^\([^:]*\):.*$/\1/p'`
+	eval "$vim" "$args"
+	;;
+    find)
+	eval "$vim" "$line"
+	;;
+    jreview|jbug)
+	local id=$line
+
+	# XXX: Hack
+	[ -n "$VISUAL" ] && [[ "$VISUAL" != *vim* ]] && \
+	    eval "$VISUAL" "$id" && return
+
+	case "$format" in
+	jreview)
+	    review edit $id
+	    ;;
+	jbug)
+#             x-www-browser 'http://bugs.home.jungo.com/bugs/show_bug.cgi?id='$id
+	    bugz show $id -f | gvim - -c 'set ft=bugz' -c 'set buftype=nofile'
+	    ;;
+	esac
+	;;
+    hw)
+	set -- $line
+	echo hw locate $1
+	hw locate $1
+	echo phone -x $2
+	phone -x $2
+	;;
+    *)
+	echo 'Format `'"${format}'"' is not supported.' >&2
+	echo $line >&2
+    ;;
+    esac
+}
+
+## Make aliases
+
+alias grepx='GREP_PROG=grepx es_grep'
+alias grepc='GREP_PROG=grepc es_grep'
+alias grepm='GREP_PROG=grepm es_grep'
+alias grepj='GREP_PROG=grepj es_grep'
+alias grepjs='GREP_PROG=grepjs es_grep'
+alias grepc#='GREP_PROG=grepc# es_grep'
+alias grepml='GREP_PROG=grepml es_grep'
+alias find='FIND_PROG=find es_find'
+alias findx='FIND_PROG=findx es_find'
+alias locate='FIND_PROG=locate es_find'
+alias svn='SVN_PROG=svn es_svn'
+alias git='GIT_PROG=git es_git'
+[ -n "$JUNGO" ] && \
+    alias jgrep='GREP_PROG=jgrep es_grep' && \
+    alias jcvs=es_jcvs && \
+    alias review=es_review && \
+    alias hw=es_hw && \
+    alias bugz=es_bugz
+
+for i in 1 2 3 4 5 6 7 8 9; do
+    alias $i='easea '$i
+    alias -- -$i='easea -'$i
+done
+unset i
+
+# vim: set filetype=sh :

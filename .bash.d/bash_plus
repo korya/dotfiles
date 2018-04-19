@@ -1,0 +1,188 @@
+# vim: set filetype=sh :
+
+# 
+realias()
+{
+    local name
+    local prev
+
+    name=$1; shift
+    prev="$(alias $name 2>/dev/null | sed 's/^alias [^=]*='"'"'\(.*\)'"'"'$/\1/')"
+    alias $name="$(sed 's/\<'$name'\>/'"${prev:-$name}"'/' <<< "$@")"
+}
+
+# cleaning arp table
+# XXX: uses rt.
+arp_clean()
+{
+    rt /usr/sbin/arp -a | awk '{ print $2 }' | tr -cd '[0-9].\n' | \
+	while read ip; do
+	    rt /usr/sbin/arp -d "$ip"
+	done
+}
+
+# mounts 
+ssh_mount()
+{
+    if [ $# -eq 0 ]; then
+	mount | grep "$HOME"
+	return $?
+    fi
+
+    server=$1; shift
+    path=$1; shift
+    mount_point=$1; shift
+
+    if [ -z "$mount_point" ]; then
+	[ -z "$path" ] && mount_point="$server" ||
+	    mount_point="$(basename $path)"
+    fi
+    mkdir -p "$HOME/mnt/$mount_point"
+    sshfs "$server:$path" "$HOME/mnt/$mount_point" "$@"
+}
+
+ssh_umount()
+{
+    if [ -n "$1" ]; then
+	path="$HOME/mnt/$1"
+	fusermount -u "$path" || return $?
+	pushd "$HOME/mnt" >/dev/null
+	rm -r "$1"
+	popd >/dev/null
+    fi
+}
+
+alias beep="echo -en '\007'"
+alias beeperr='{ beep && sleep 1 && beep && sleep 1 && beep; }'
+
+# handler called when an inserted command not found:
+command_not_found_handle ()
+{
+    [ -d "$HOME/rg/rg.$1" ] || \
+	{ echo "Comrade! The command \"$1\" not found..."; return 126; }
+    echo "$HOME/rg/rg.$1"; return 126
+}
+
+sttl()
+{
+    PROMPT_COMMAND='history -a'
+    echo -ne "\033]0;""$@""\007"
+}
+
+findx()
+{
+    [ $# -eq 1 ] && find . -iname '*'"$1"'*'
+}
+
+grepx()
+{
+    local target=
+
+    [ $# -le 2 -o ! -e "${!#}" ] && target=.
+    grep --exclude-dir\=.svn --exclude-dir\=CVS --exclude-dir\=.git \
+	--exclude\=cscope{,.po,.in}.out --exclude='.#*' \
+	-HREn "$@" $target
+}
+
+# XXX: defined as function because of easea
+grepc()
+{
+    grepx --include='*.[ch]' "$@"
+}
+
+# XXX: defined as function because of easea
+grepm()
+{
+    grepx --include='*.mk' --include='*.mak' --include='Makefile*' \
+	--include='*/Makefile*' --include='Kconfig*' --include='*/Kconfig*' \
+	--include='Kbuild*' --include='*/Kbuild*' "$@"
+}
+
+# XXX: defined as function because of easea
+grepj()
+{
+    grepx --include='*.java' "$@"
+}
+
+# XXX: defined as function because of easea
+grepjs()
+{
+    grepx --include='*.js' "$@"
+}
+
+# Jungo grep
+jgrep()
+{
+    if [ -d "./CVS" ] && which jcvs; then
+	jcvs grep "$@"
+    else
+	grepx "$@"
+    fi
+}
+
+# C#
+grepc#()
+{
+    grepx --include='*.cs' "$@"
+}
+
+# XXX: defined as function because of easea
+grepml()
+{
+    grepx --include='*.ml' --include='*.mli' "$@"
+}
+
+mnt()
+{
+    sudo mount /dev/$1 /media/usb -o users,uid=$UID
+}
+
+rreadlink()
+{
+    local f="$1"
+
+    [ -e "$f" ] && echo -n "$f" && \
+	while readlink "$f" >/dev/null; do
+	    f="$(readlink "$f")"
+	    [ -e "$f" ] && echo -n " -> $f"
+	done
+    echo
+}
+
+rwhich()
+{
+    rreadlink $(which "$1")
+}
+
+c()
+{
+    awk '{ print '"$@"'; }'
+}
+
+tokmux()
+{
+    gvim -c 'call Tokmux("'"$1"'")' -c 'wincmd k' -c 'bdelete'
+}
+
+alias nobeep='xset b off; xset b 0 0 0'
+alias gitdiff='CVS_PROG=git svndiff'
+
+## Aliases
+# 1 to 7 for first 7 results
+# for i in `seq 1 7`; do
+#     alias $i='eval gvim $( eval $(history | sed "s/^ *[0-9][0-9]*  *//" | grep -E ^[jre]?grep | tail -1) | cut -d: -f1,2 | sed "s/:/ +/" | sed -n '$i'p)'
+# done
+# -1 to -7 for last 7 results 
+# for i in `seq 1 7`; do
+#     alias -- -$i='eval gvim $( eval $(history | sed "s/^ *[0-9][0-9]*  *//" | grep -E ^[jre]?grep | tail -1) | cut -d: -f1,2 | sed "s/:/ +/" | tail -'$i' | head -1)'
+# done
+# unset i
+
+#
+# change font for console
+# sudo consolechars -f UniCyr_8x16.psf --tty=/dev/tty6
+
+# find / -iname '*.mp3' -print0 | xargs -0 mid3iconv -eCP1251 --remove-v1
+
+# Turn off beep
+# setterm -blength

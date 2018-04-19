@@ -1,0 +1,81 @@
+# vim: set filetype=sh :
+
+complete -o filenames -F _longopt grepx grepm grepc jgrep
+
+# Autocompletion for is_active
+_rapida()
+{
+    local cur
+    local users_file="$_phone_users_file"
+
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD - 1]}
+
+    case "$prev" in
+    -u|--username|-p|--password|-O)
+	_filedir
+	return
+	;;
+    esac
+
+    if [[ $cur != --* ]]; then
+	_filedir
+	return
+    fi
+
+    cur=${cur#--}
+    COMPREPLY=" $(compgen -W 'username password verbose no-verbose quiet help' \
+        -- $cur | sed 's/^\(.*\)$/--\1/') "
+    for ((i=0; i<${#COMP_WORDS[@]}-1; i++ )); do
+	temp=${COMP_WORDS[i]}
+	[[ "$temp" != -* ]] && continue
+	if [[ "$temp" != --* ]]; then
+	    temp="$(rapida --help 2>&1 | \
+	        grep -Eoe '^ *-'"$temp"'\|--[a-z][a-z]* ' | cut -d\| -f2)"
+	    [ -z "$temp" ] && continue
+	fi
+	COMPREPLY=" ${COMPREPLY/ $temp / } "
+    done
+    COMPREPLY=( $COMPREPLY )
+}
+complete -F _rapida -o filenames rapida
+
+_backup()
+{
+    local cur
+    local prev
+
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD - 1]}
+
+    case "$prev" in
+    -m|--ci-msg)
+	_filedir
+	return 0
+	;;
+    esac
+
+    COMPREPLY=' --omit-svn --ci-msg --omit-tar '
+    for ((i=0; i<${#COMP_WORDS[@]}-1; i++ )); do
+	[[ "${COMP_WORDS[i]}" == '-m' ]] && j='--ci-msg' || j="${COMP_WORDS[i]}"
+#         COMPREPLY=" ${COMPREPLY[@]} "
+	COMPREPLY=" ${COMPREPLY/ $j / } "
+    done
+    COMPREPLY=( $(compgen -W "$COMPREPLY" -- $cur) )
+}
+complete -F _backup -o filenames backup
+
+complete -c rwhich
+
+### _ssh_umount()
+### {
+###     local cur
+### 
+###     COMPREPLY=()
+###     cur=${COMP_WORDS[COMP_CWORD]}
+### 
+###     COMPREPLY=( $(compgen -W "$(ls $HOME/mnt)" -- $cur) )
+### }
+### complete -o dirnames -F _ssh_umount ssh_umount
