@@ -1,1 +1,1 @@
-/Users/korya/dev/plntr/docker-images/wi-deploy/script/admiral.sh
+/Users/dmitri/dev/wi-deploy/script/admiral.sh

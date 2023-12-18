@@ -1,1 +1,0 @@
-/Users/korya/dev/b2d/b2d.sh

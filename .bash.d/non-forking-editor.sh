@@ -1,13 +1,13 @@
-# Force using of `gvim -f' as VISUAL for programs that need it.
-OIFS="$IFS"; IFS=:
-for i in $NON_FORKING_EDITOR_PROGS; do
-    [ -z "$i" ] && continue
-
-    prev_alias="$(alias "$i" 2>/dev/null | sed 's/^alias .*='"'"'\(.*\)'"'"'$/\1/')"
-    alias $i='VISUAL='"$VIM"'\ -f '"${prev_alias:-$i}"
-done
-
-IFS="$OIFS"
-
-# reduce pollution
-unset i prev_alias OIFS NON_FORKING_EDITOR_PROGS
+# # XXX detect the best vim binary: vim, gvim, mvim or nvim
+# VIM=vim
+# 
+# # Force using of `$VIM -f' as VISUAL for programs that need it.
+# for i in svn cvs git crontab; do
+#     [ -z "$i" ] && continue
+# 
+#     prev_alias="$(alias "$i" 2>/dev/null | sed -e "s/^[^=]*='//" -e "s/'$//")"
+#     alias $i='VISUAL='"${VIM:-vim}"'\ -f '"${prev_alias:-$i}"
+# done
+# 
+# # reduce pollution
+# unset i prev_alias

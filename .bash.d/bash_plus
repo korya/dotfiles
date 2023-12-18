@@ -58,9 +58,8 @@ alias beeperr='{ beep && sleep 1 && beep && sleep 1 && beep; }'
 # handler called when an inserted command not found:
 command_not_found_handle ()
 {
-    [ -d "$HOME/rg/rg.$1" ] || \
-	{ echo "Comrade! The command \"$1\" not found..."; return 126; }
-    echo "$HOME/rg/rg.$1"; return 126
+    echo "Comrade! The command \"$1\" not found..."
+    return 126
 }
 
 sttl()
@@ -110,16 +109,6 @@ grepjs()
     grepx --include='*.js' "$@"
 }
 
-# Jungo grep
-jgrep()
-{
-    if [ -d "./CVS" ] && which jcvs; then
-	jcvs grep "$@"
-    else
-	grepx "$@"
-    fi
-}
-
 # C#
 grepc#()
 {
@@ -159,22 +148,17 @@ c()
     awk '{ print '"$@"'; }'
 }
 
-tokmux()
-{
-    gvim -c 'call Tokmux("'"$1"'")' -c 'wincmd k' -c 'bdelete'
-}
-
 alias nobeep='xset b off; xset b 0 0 0'
 alias gitdiff='CVS_PROG=git svndiff'
 
 ## Aliases
 # 1 to 7 for first 7 results
 # for i in `seq 1 7`; do
-#     alias $i='eval gvim $( eval $(history | sed "s/^ *[0-9][0-9]*  *//" | grep -E ^[jre]?grep | tail -1) | cut -d: -f1,2 | sed "s/:/ +/" | sed -n '$i'p)'
+#     alias $i='eval gvim $( eval $(history | sed "s/^ *[0-9][0-9]*  *//" | grep -E ^[re]?grep | tail -1) | cut -d: -f1,2 | sed "s/:/ +/" | sed -n '$i'p)'
 # done
 # -1 to -7 for last 7 results 
 # for i in `seq 1 7`; do
-#     alias -- -$i='eval gvim $( eval $(history | sed "s/^ *[0-9][0-9]*  *//" | grep -E ^[jre]?grep | tail -1) | cut -d: -f1,2 | sed "s/:/ +/" | tail -'$i' | head -1)'
+#     alias -- -$i='eval gvim $( eval $(history | sed "s/^ *[0-9][0-9]*  *//" | grep -E ^[re]?grep | tail -1) | cut -d: -f1,2 | sed "s/:/ +/" | tail -'$i' | head -1)'
 # done
 # unset i
 

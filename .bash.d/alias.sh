@@ -23,3 +23,11 @@ alias c2="awk '{print \$2}'"
 alias c3="awk '{print \$3}'"
 alias c4="awk '{print \$4}'"
 alias c5="awk '{print \$5}'"
+
+# git aliases
+alias gco='git checkout'
+alias gss='git status -s'
+alias gdt='git difftool'
+git-reset-file() { 
+    git reset @~ "$@" && git commit --amend --no-edit 
+}

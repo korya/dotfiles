@@ -36,44 +36,6 @@ es_find()
     "${FIND_PROG:-find}" "$@" | tee -a $EASEA_TEMP_FILE
 }
 
-es_review()
-{
-    local format
-
-    case "$1" in
-    to_me|from_me|show_bugs|for_bug)
-	[ "$1" == show_bugs ] && format=jbug || format=jreview
-	echo "$format" > $EASEA_TEMP_FILE
-	review "$@" | \
-	    tee >(grep '^|' | tail -n +2 | cut -d\  -f2 >> $EASEA_TEMP_FILE) >/dev/stdout
-	;;
-    *)
-	review "$@"
-	;;
-    esac
-}
-
-es_jcvs()
-{
-    case "$1" in
-    grep)
-	echo grep > $EASEA_TEMP_FILE
-	jcvs "$@" | tee -a $EASEA_TEMP_FILE
-	;;
-    up)
-	echo cvsup > $EASEA_TEMP_FILE
-	jcvs "$@" | tee >/dev/stdout >(cut -c3- >> $EASEA_TEMP_FILE)
-	;;
-    ann)
-	echo jreview > $EASEA_TEMP_FILE
-	jcvs "$@" | tee >/dev/stdout >(cut -d\  -f1 >> $EASEA_TEMP_FILE)
-	;;
-    *)
-	jcvs "$@"
-	;;
-    esac
-}
-
 es_svn()
 {
     case "$1" in
@@ -98,38 +60,6 @@ es_git()
     fi
 
     "${GIT_PROG:-svn}" "$@"
-}
-
-es_hw()
-{
-    case "$1" in
-    grep)
-	echo hw > $EASEA_TEMP_FILE
-	hw grep "$@" | tee >/dev/stdout \
-	    >(awk -F'|' '{
-	    gsub(/[ \t]+/, "");
-	    if ($2 ~ /^HW/)
-		printf("%s %s\n", $2, $3);
-	    }' >> $EASEA_TEMP_FILE)
-	;;
-    *)
-	hw "$@"
-	;;
-    esac
-}
-
-es_bugz()
-{
-    case "$1" in
-    data|recent)
-	echo jbug > $EASEA_TEMP_FILE
-	bugz "$@" | \
-	    tee >(grep '^|' | tail -n +2 | cut -d\  -f2 >> $EASEA_TEMP_FILE) >/dev/stdout
-	;;
-    *)
-	bugz "$@"
-	;;
-    esac
 }
 
 ## Get the line
@@ -163,23 +93,6 @@ easea()
     find)
 	eval "$vim" "$line"
 	;;
-    jreview|jbug)
-	local id=$line
-
-	# XXX: Hack
-	[ -n "$VISUAL" ] && [[ "$VISUAL" != *vim* ]] && \
-	    eval "$VISUAL" "$id" && return
-
-	case "$format" in
-	jreview)
-	    review edit $id
-	    ;;
-	jbug)
-#             x-www-browser 'http://bugs.home.jungo.com/bugs/show_bug.cgi?id='$id
-	    bugz show $id -f | gvim - -c 'set ft=bugz' -c 'set buftype=nofile'
-	    ;;
-	esac
-	;;
     hw)
 	set -- $line
 	echo hw locate $1
@@ -208,12 +121,6 @@ alias findx='FIND_PROG=findx es_find'
 alias locate='FIND_PROG=locate es_find'
 alias svn='SVN_PROG=svn es_svn'
 alias git='GIT_PROG=git es_git'
-[ -n "$JUNGO" ] && \
-    alias jgrep='GREP_PROG=jgrep es_grep' && \
-    alias jcvs=es_jcvs && \
-    alias review=es_review && \
-    alias hw=es_hw && \
-    alias bugz=es_bugz
 
 for i in 1 2 3 4 5 6 7 8 9; do
     alias $i='easea '$i

@@ -180,20 +180,9 @@ nnoremap <Leader>w :silent exec ":!x-www-browser http://en.wikipedia.org/wiki/<c
 
 " }}}
 
-" PLUGIN: tpope/commentary {{{
-
-nnoremap <C-C> gcc
-vnoremap <C-C> gc
-inoremap <C-C> <Esc>gcc
-
-" }}}
-
 " XXX Move to Project vim settings {{{
 
 au BufRead,BufNewFile * let curr_dir=expand("%:p")
-nnoremap <F10> :wa<CR>:set makeprg=.\ ~/.bashrc;\ jqmake\ %<CR>:make<CR>
-inoremap <F10> <Esc>:wa<CR>:set makeprg=make\ $(echo\ %\\\|grep\ -o\ 'pkg/[^/]*')\ &&\ make\ -C\ pkg/main\ &&\ make\ ramdisk\ &&\ make\ -C\ os<CR>:make<CR>
-vnoremap <F10> <Esc>:wa<CR>:set makeprg=make\ $(echo\ %\\\|grep\ -o\ 'pkg/[^/]*')\ &&\ make\ -C\ pkg/main\ &&\ make\ ramdisk\ &&\ make\ -C\ os<CR>:make<CR>
 
 nmap ;; :sil exe ":!git difftool % &"<CR>
 
@@ -204,6 +193,13 @@ nnoremap <Leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
 
 " When you don't have write permissions for the changed file:
 " command Wsudo set buftype=nowrite | silent execute ':%w !sudo tee %' | set buftype= | e! %
+
+" PLUGIN: vim-polyglot {{{
+
+" XXX vim-sensible causes very annoying popup window showing type info
+let g:polyglot_disabled = ['sensible']
+
+" }}}
 
 " PLUGIN: vim-plug {{{
 
@@ -231,105 +227,54 @@ Plug 'kien/ctrlp.vim'
 Plug 'terryma/vim-multiple-cursors'
 Plug 'godlygeek/tabular'
 Plug 'Valloric/ListToggle'
+" XXX does not work in Vue files
 Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-fugitive'
+Plug 'tpope/vim-rhubarb'
+Plug 'airblade/vim-gitgutter'
 Plug 'scrooloose/nerdtree', { 'on':  'NERDTreeToggle' }
+Plug 'Xuyuanp/nerdtree-git-plugin'
 
 Plug 'editorconfig/editorconfig-vim'
 Plug 'vim-syntastic/syntastic'
 " Plug 'w0rp/ale'
 Plug 'Valloric/YouCompleteMe', { 'do': './install.py  --clang-completer --gocode-completer --tern-completer --go-completer --js-completer --rust-completer' }
 
-Plug 'plasticboy/vim-markdown', { 'for': 'markdown' }
-Plug 'elzr/vim-json', { 'for': 'json' }
-Plug 'stephpy/vim-yaml', { 'for': 'yaml' }
-Plug 'cespare/vim-toml', { 'for': 'toml' }
-Plug 'Matt-Deacalion/vim-systemd-syntax', { 'for': 'systemd' }
-Plug 'elubow/cql-vim', { 'for': 'cql' }
-Plug 'exu/pgsql.vim', { 'for': ['pgsql', 'sql'] }
+" Plug 'plasticboy/vim-markdown', { 'for': 'markdown' }
+" Plug 'elzr/vim-json', { 'for': 'json' }
+" Plug 'stephpy/vim-yaml', { 'for': 'yaml' }
+" Plug 'cespare/vim-toml', { 'for': 'toml' }
+" Plug 'Matt-Deacalion/vim-systemd-syntax', { 'for': 'systemd' }
+" Plug 'elubow/cql-vim', { 'for': 'cql' }
+" Plug 'exu/pgsql.vim', { 'for': ['pgsql', 'sql'] }
 
-Plug 'shawncplus/phpcomplete.vim', { 'for': 'php' }
-Plug 'hynek/vim-python-pep8-indent', { 'for': 'python' }
+" Plug 'shawncplus/phpcomplete.vim', { 'for': 'php' }
+" Plug 'hynek/vim-python-pep8-indent', { 'for': 'python' }
 " Plug 'JuliaLang/julia-vim', { 'for': 'julia' }
-Plug 'JuliaLang/julia-vim'
+" Plug 'JuliaLang/julia-vim'
 
-Plug 'othree/html5.vim', { 'for': ['html', 'hbs'] }
+" Plug 'othree/html5.vim', { 'for': ['html', 'hbs'] }
 Plug 'othree/javascript-libraries-syntax.vim', { 'for': 'javascript' }
-Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
+" Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
 Plug 'MaxMEllon/vim-jsx-pretty', { 'for': 'javascript' }
-Plug 'leafgarland/typescript-vim', { 'for': 'typescript' }
-Plug 'Quramy/tsuquyomi', { 'for': 'typescript', }
+" Plug 'leafgarland/typescript-vim', { 'for': 'typescript' }
+" Plug 'posva/vim-vue', { 'for': 'vue' }
+" Plug 'Quramy/tsuquyomi', { 'for': 'typescript', }
 
-Plug 'fatih/vim-go', { 'for': 'go', 'do': ':GoInstallBinaries' }
+Plug 'fatih/vim-go', { 'for': 'go', 'do': ':GoUpdateBinaries' }
 
-Plug 'rust-lang/rust.vim', { 'for': 'rust' }
+" Load it after vim-go
+Plug 'sheerun/vim-polyglot'
+
+Plug 'github/copilot.vim'
+
+" Plug 'rust-lang/rust.vim', { 'for': 'rust' }
 
 call plug#end()
-
 " }}}
-
-
-" XXX replaced with vim-plug
-" 
-" PLUGIN: dein {{{
-" 
-" if &compatible
-"   set nocompatible
-" endif
-" 
-" " Required:
-" set runtimepath^=~/.vim/dein/repos/github.com/Shougo/dein.vim
-" 
-" " Required:
-" call dein#begin(expand('~/.vim/dein/'))
-" 
-" " Load plugins from TOML file
-" call dein#load_toml("~/.vim/dein/plugins.toml", {})
-" 
-" " Required:
-" call dein#end()
-" 
-" " Required: (neovim sets it by default):
-" filetype plugin indent on
-" 
-" }}}
-
-" PLUGIN: vim-pathogen settings {{{
-
-" To disable a plugin, add it's bundle name to the following list
-" let g:pathogen_disabled = []
-" call add(g:pathogen_disabled, 'vim-pathogen')
-
-" exec pathogen#infect()
-
-" fun! s:loadBundlesFromRoot(path)
-  " Visit parent directory, if we did not reach the root
-"   if a:path != "/" && !filereadable(a:path . "/.vim/.root")
-"     call s:loadBundlesFromRoot(fnamemodify(a:path, ":h"))
-"   endif
-
-"   let vimSubDir = a:path . '/.vim'
-"   if isdirectory(vimSubDir)
-"     let bundleDir = vimSubDir . '/bundle'
-    " Add the local bundles
-"     if isdirectory(bundleDir)
-"       exec pathogen#infect(bundleDir . '/{}')
-"     endif
-
-    " Now we can add the vimdir
-"     call pathogen#surround(vimSubDir)
-"   endif
-" endfun
-" call s:loadBundlesFromRoot(getcwd())
-
-"}}}
 
 colorscheme solarized
 set background=dark
-
-" Pathogen dependent commong settings {{{
-
-" }}}
 
 " PLUGIN: ctrl-p {{{
 
@@ -369,6 +314,34 @@ let g:airline_symbols.readonly = '⭤'
 
 "}}}
 
+" PLUGIN: tpope/commentary {{{
+
+nnoremap <C-C> gcc
+vnoremap <C-C> gc
+inoremap <C-C> <Esc>gcc
+
+" }}}
+
+" PLUGIN: airblade/vim-gitgutter {{{
+
+if &diff
+  let g:gitgutter_enabled = 0
+else
+  let g:gitgutter_async = 0
+  " Update the signs on file save
+  autocmd BufWritePost * GitGutter
+
+  nnoremap ,, :GitGutterLineHighlightsToggle<CR>
+  " next change
+  nnoremap ,] :GitGutterNextHunk<CR>
+  nnoremap <tab> :GitGutterNextHunk<CR>
+  " previous change
+  nnoremap ,[ :GitGutterPrevHunk<CR>
+  nnoremap <s-tab> :GitGutterPrevHunk<CR>
+endif
+
+" }}}
+
 " PLUGIN: haskellmode-vim settings {{{
 
 let g:haddock_browser="/usr/bin/x-www-browser"
@@ -378,17 +351,32 @@ let g:haddock_browser="/usr/bin/x-www-browser"
 " PLUGIN: vimwiki settings {{{
 
 let g:vimwiki_list = [{'path': '~/rg/wiki/src', 'path_html': '~/rg/wiki/html'}]
+
 " }}}
 
 " PLUGIN: pangloss/vim-javascript {{{
+
 let g:javascript_simple_indent = 0
+
 " }}}
 
 " PLUGIN: javascript-libraries-syntax {{{
+
 let g:used_javascript_libs = 'underscore,angularjs,angularui,angularuirouter'
+
+" }}}
+
+" PLUGIN: scrooloose/nerdtree {{{
+
+let NERDTreeMinimalUI = 1
+
+" Close vim if the only window left open is a NERDTree
+autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
+
 " }}}
 
 " PLUGIN: fatih/vim-go {{{
+
 let g:go_highlight_types = 1
 let g:go_highlight_extra_types = 1
 let g:go_highlight_interfaces = 1
@@ -403,17 +391,31 @@ let g:go_highlight_generate_tags = 1
 
 let g:go_template_autocreate = 0
 let g:go_fmt_command = "goimports"
-let g:go_info_mode = "guru"
+let g:go_auto_sameids = 0
+
+let g:go_gopls_fuzzy_matching = 1
 
 " Sometimes when using both `vim-go` and `syntastic` Vim will start lagging
 " while saving and opening files. The following fixes this:
-let g:syntastic_go_checkers = ['golint', 'govet']
-let g:syntastic_mode_map = { 'mode': 'active', 'passive_filetypes': ['go'] }
+let g:syntastic_go_checkers = ["golint", "govet"]
+let g:syntastic_mode_map = { "mode": "active", "passive_filetypes": ["go"] }
+
+let g:go_metalinter_command = "golangci-lint"
 
 " Another issue with `vim-go` and `syntastic` is that the location list window
 " that contains the output of commands such as `:GoBuild` and `:GoTest` might
-" not appear.  To resolve this:
+" not appear. To resolve this:
 let g:go_list_type = "quickfix"
+
+" Disable gopls in diff mode -- it consumes too much CPU.
+" The way I run the diff on a working tree is by using `git difftool`
+" that opens every file in vim. Often, I end up reviewing the files very briefly
+" and close them. Every time a file is opened a new request is sent to gopls and
+" this this causes gopls to consume a lot of CPU for nothing.
+" I am not sure who the problem here: me, gopls or vim-go.
+if &diff
+  let g:go_gopls_enabled = 0
+endif
 
 "}}}
 
@@ -493,7 +495,23 @@ endif
 
 " }}}
 
-" vim:tabstop=2:shiftwidth=2:expandtab:foldmethod=marker:textwidth=80
+" PLUGIN: posva/vim-vue {{{
+
+let g:vue_disable_pre_processors=1
+
+" Fix Syntax highlighting in Vue files
+autocmd FileType vue syntax sync fromstart
+
+" Use existing HTML, JS, CSS settings/plugins in Vue files
+" autocmd BufRead,BufNewFile *.vue setlocal filetype=vue.html.javascript.css
+
+" }}}
+
+" PLUGIN: posva/vim-vue {{{
+
+" }}}
 
 " Turn on the syntax after the plugins are configured
 syntax on
+
+" vim:tabstop=2:shiftwidth=2:expandtab:foldmethod=marker:textwidth=80
