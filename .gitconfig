@@ -1,0 +1,41 @@
+[user]
+	name = korya
+	email = korya.github@gmail.com
+	signingkey = 844EA3F966C652C5
+[diff]
+	tool = gvimdiff
+	guitool = gvimdiff
+	colorMoved = zebra
+[difftool]
+	prompt = false
+[push]
+	default = simple
+[filter "hawser"]
+	clean = git hawser clean %f
+	smudge = git hawser smudge %f
+	required = true
+[credential]
+	helper = osxkeychain
+[commit]
+	gpgsign = false
+[gpg]
+	program = gpg
+[core]
+	editor = gvim
+[pull]
+	rebase = true
+[init]
+	defaultBranch = master
+[rebase]
+	committerDateIsAuthorDate = true
+[fetch]
+	prune = true
+[alias]
+	rebase = rebase --committer-date-is-author-date --aqwe
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+[rerere]
+	enabled = true

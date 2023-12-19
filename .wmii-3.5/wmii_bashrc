@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+#
+#
+#
+#
+
+echo LL
+
+alias ls="wmiir ls"
+alias cat="wmiir read"
+alias read="wmiir read"
+alias rm="wmiir remove"
+alias touch="wmiir create"
+

@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# lib_include color
+# Returns a color
+# @1 - foreground color number
+# @2 - background color number
+# @3 - boldness (Optional)
+# @output - correspondig escape sequence
+color_make_raw()
+{
+    echo -en "\033[${3-0}${1:+;3}$1${2+;4}$2m"
+}
+
+
+echo -en "    "
+for j in 0 1 2 3 4 5 6 7; do
+	echo -en "      4$j"
+done
+
+echo ""
+
+for i in 0 1 2 3 4 5 6 7
+do
+    echo -en "  3$i"
+    for j in 0 1 2 3 4 5 6 7; do
+	echo -en "$(color_make_raw $i $j) Normal "
+    done
+    echo -e "$(color_make_raw)"
+    echo -en "    "
+    for j in 0 1 2 3 4 5 6 7; do
+	echo -en "$(color_make_raw $i $j 1) Bold   "
+    done
+    echo -e "$(color_make_raw)"
+done
+exit 0
