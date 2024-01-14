@@ -1,4 +1,4 @@
-export PATH="/usr/local/bin:$PATH"
+export PATH="/usr/local/bin:${PATH}:${HOME}/bin"
 export VISUAL="mvim"
 
 export XDG_CONFIG_HOME="${HOME}/.config"

@@ -1,1 +1,10 @@
-*
+#*
+.*.sw[a-z]*
+Downloads/
+Desktop/
+Documents/
+Library/
+Music/
+Movies/
+Pictures/
+Public/
