@@ -1,5 +1,18 @@
 #*
+
+# Vim swap files
 .*.sw[a-z]*
+
+# Machine-specific files
+.aws/
+.bash_history
+.cache/
+.docker/
+.ssh/
+go/
+tmp/
+
+# MacOS machine-specific files
 Downloads/
 Desktop/
 Documents/
@@ -8,5 +21,3 @@ Music/
 Movies/
 Pictures/
 Public/
-go/
-tmp/
