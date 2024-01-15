@@ -43,13 +43,8 @@ if ${use_color} ; then
 # > `who mom likes' does not work with non-login shell.
     if [[ ${EUID} == 0 ]] ; then
 	PS1='\[\033[31m\]\h\[\033[34m\] \W \$\[\033[00m\] '
-# UPDATE: ne rabotaet s urxvt, po-moemu, t.k. tot ne ispol'zuet /dev/pts/*
-    elif [ "X$KORYA_LOGIN_SHELL" != X -a "X$KORYA_REMOTE_SHELL" != X ]; then
-	PS1='\[\033[01;32m\]\u@\[\033[01;31m\]\h\[\033[01;34m\] \w \$\[\033[00m\] '
-#     elif [ "X$SSH_CLIENT" != X ]; then
-#         PS1='\[\033[01;32m\]\u@\[\033[01;31m\]\h\[\033[01;34m\] \w \$\[\033[00m\] '
-#     elif [[ ${HOSTNAME} == stud1* ]]; then
-#         PS1='\[\033[01;32m\]\u@\[\033[01;31m\]\h\[\033[01;34m\] \w \$\[\033[00m\] '
+    elif [ "X$SSH_CLIENT" != X ]; then
+        PS1='\[\033[0;32m\]\u@\[\033[0;33m\]\h[SSH]\[\033[0;34m\] \W \$\[\033[00m\] '
     else
 	PS1='\[\033[32m\]\u@\h\[\033[34m\] \W \$\[\033[00m\] '
     fi
