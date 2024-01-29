@@ -11,8 +11,10 @@
 .ssh/
 go/
 tmp/
+__pycache__/
 
 # MacOS machine-specific files
+Applications/
 Downloads/
 Desktop/
 Documents/
