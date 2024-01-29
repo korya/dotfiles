@@ -1,0 +1,16 @@
+#
+# Boy kurantov kajdiy 4as
+#
+
+while :; do 
+    let "wait_period=60-`date +%M`"
+    sleep ${wait_period}'m'
+    cat download/firefox/kuranti_na4alo.au > /dev/audio
+    hour=`date +%l`
+    while [ "$hour" -gt -0 ]
+    do 
+        cat download/firefox/kuranti_boi.au > /dev/audio
+        let "hour--"
+    done
+done
+

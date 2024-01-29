@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#
+# download recursively mp3-s from $1
+#
+
+if [ $# -ne 0 ]; then
+    while [ $# -eq 0 ];
+    do
+        wget -A mp3 -np -r -c "$1"
+        shift
+    done
+else
+    while read line;
+    do
+        wget -A mp3 -np -r -c "$line"
+    done
+fi
+

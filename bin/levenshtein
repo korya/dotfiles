@@ -1,0 +1,34 @@
+#!/bin/bash
+
+break_str()
+{
+    local str="$1"
+
+    echo -n "$str" | sed 's/\(.\)/\1\n/g';
+}
+
+calc_distance()
+{
+    true
+}
+
+from="$1"
+to="$2"
+
+# XXX Any other way to insert new lines?
+diff -d --old-group-format='d %dn
+' \
+    --new-group-format='a %dN
+' \
+    --changed-group-format='c %dn %dN
+' \
+    --unchanged-group-format='' \
+    <(break_str "$from") <(break_str "$to") | \
+    awk 'function max(n, m) { return (n < m) ? m : n; }
+	 BEGIN { distance = 0 }
+	 /^[ad] / { distance += $2 }
+	 /^c / { distance += max($2, $3) }
+	 END { print distance }'
+# cat
+
+# vim: ft=sh :

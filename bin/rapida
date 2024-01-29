@@ -1,0 +1,141 @@
+#!/bin/bash
+
+VERBOSE='-v'
+OUTPUT="$(pwd)"
+
+# .rapidarc is c CSV file in a following format:
+# host,username,password
+RAPIDARC="$HOME/.rapidarc"
+
+#
+# Prints the usage text
+#
+usage() {
+    echo "Use: rapida [options] LINKS"
+    echo "LINKS are the links we wanna download."
+    echo ""
+    echo "Options:"
+    echo -e "   -O PATH            - where PATH is an existing directory(by default curr dir)"
+    echo -e "                      - when PATH is '-' prints to stdout."
+    echo -e "   -v|--verbose       - be verbose (this is the default)."
+    echo -e "   -nv|--no-verbose   - turn off verboseness, without being quiet."
+    echo -e "   -q|--quiet         - quiet (no output)."
+    echo -e "   -h|--help          - view this text."
+    exit 0
+}
+
+# Extracts a hostname from a link
+# @1 - a link
+# @output - the hostname
+get_host()
+{
+    echo "$@" | \
+    sed -e 's@^.*://@@' \
+        -e 's@^\([^/]\+\)/.*$@\1@' \
+        -e 's@^\([a-zA-Z0-9._-]\+\.\)*\([a-zA-Z0-9_-]\+\.[a-zA-Z0-9_-]\+\)@\2@'
+}
+
+# Returns a username and a password for a host
+# @1 - a hostname
+# @output - <hostname>\n<password>
+get_username_password()
+{
+    cgpl "$RAPIDARC" "$1" | \
+	sed -n 's/^username: //p; s/^password: //p'
+}
+
+# A hack for depositfiles to extract the right link
+# @1 - username
+# @2 - password
+# @3 - link
+# @output - link to download
+deposit_extract_link()
+{
+    local username="$1"; shift
+    local password="$1"; shift
+    local link="$1"; shift
+
+    wget -c --auth-no-challenge -q \
+	${username:+--http-user=${username} --http-password=${password}} \
+	"$link" -O- | tr -d '\n' | sed 's/\<div /\ndiv /g' | \
+	grep -w 'id="download_url"' | sed 's/^.*<a href="\([^"]*\)".*$/\1/'
+}
+
+# Downloads a link
+# @1 - the link
+get_link()
+{
+    local link="$1"
+    local host=$(get_host "$link")
+    local username password output_dir
+
+    set -- $(get_username_password $host)
+    username=$1
+    password=$2
+
+    output_dir="--directory-prefix=${OUTPUT}"
+    if [ "$OUTPUT" = "-" ]; then
+        output_dir='-O -'
+    fi
+    if [ "$host" == "depositfiles.com" ]; then
+	link="$(deposit_extract_link $username $password "$link")"
+	[ -z "$link" ] && echo "No link. May be the file is deleted?" && return 1
+    fi
+
+    wget -c --auth-no-challenge $VERBOSE \
+	${username:+--http-user=${username} --http-password=${password}} \
+	"$link" "$output_dir"
+}
+
+#
+# Reads the urls from stdin
+from_stdin() {
+    while read line
+    do
+        get_link "$line"
+    done
+}
+
+while [ -n "$1" ]
+do
+    case "$1" in
+    -v|--verbose|-nv|--no-verbose|-q|--quiet)
+	VERBOSE="$1"
+	;;
+    -h|--help)
+	usage && exit 0
+	;;
+    -O)
+	[ -z "$2" ] && usage >&2 && exit 1
+	OUTPUT="$2" 
+	shift
+	;;
+    -) 
+	break
+	;;
+    -*) 
+	usage >&2 && exit 2
+	;;
+    *) 
+	break
+	;;
+    esac
+    shift
+done
+
+if [ $# -ne 0 ]; then
+	until [ -z "$1" ]
+	do
+        if [ "$1" == "-" ]; then
+            from_stdin
+        else
+		    get_link "$1"
+        fi
+		shift
+	done
+else
+    from_stdin
+fi
+
+exit 0
+

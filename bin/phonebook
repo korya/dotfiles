@@ -1,0 +1,54 @@
+#!/bin/bash
+
+CONTACTS_FILE="${HOME}/.contacts.csv"
+
+PATTERN=
+EXACTLY=
+CASE_INSENSE="1"
+
+usage()
+{
+    >&2 echo "Usage: $0 [OPTIONS] username"
+    >&2 echo ""
+    >&2 echo "Options:"
+    >&2 echo "  -x   exact name"
+    >&2 echo "  -d   print full description"
+}
+
+getlineno()
+{
+    # `-1' to remove the header
+    sed -n '1d; /'"${PATTERN}"'/ '"${CASE_INSENSE:+I}"' =' "${CONTACTS_FILE}" | \
+	while read num; do echo $[ $num - 1 ]; done
+}
+
+while getopts "xd" flag
+do
+    case $flag in
+    x) EXACTLY="1" ;;
+    d) FULL="1" ;;
+    *) exit 1 ;;
+    esac
+done
+shift $[ $OPTIND - 1 ]
+
+PATTERN="$1"
+
+if [ -n "$EXACTLY" ]; then
+    PATTERN="^${PATTERN},"
+    CASE_INSENSE=
+fi
+
+getlineno | \
+while read num; do
+    cpl "${CONTACTS_FILE}" $num | \
+	sed -n '/^[A-Za-z0-9 -]*: *$/ !p' | \
+	if [ -n "FULL" ]; then
+	    grep -e "\(Name\|Phone\|E-mail\)"
+	else
+	    cat
+	fi
+    echo -e "\n---------------------------\n"
+done
+
+# vim: ft=sh :

@@ -1,0 +1,183 @@
+#! /bin/bash
+
+INTERACTIVE_REMOVE=
+DEBUG=1
+
+[ "$1" = -i ] && { shift; INTERACTIVE_REMOVE=1; }
+
+function usage()
+{
+    echo Usage: $0
+    echo
+    echo -n This program scans for a rar files in current directory, 
+    echo -n extracts it and removes. If the rar file is parted, it will
+    echo -n remove after an extraction all parts.
+    echo
+    exit 1
+}
+
+try_to_extract()
+{
+    [ -n "$DEBUG" ] && echo -n 'Executing `'"$@""'... "
+    "$@" || \
+       { echo 'Failed to execute `'"$@"\' && return 1; }
+    [ -n "$DEBUG" ] && echo "Ok."
+    [ -n "$DEBUG" ] && echo 'Removing files `'"$RM_MASK""'... "
+    rm ${INTERACTIVE_REMOVE:+-i} $RM_MASK
+}
+
+handle_rar()
+{
+    case "$1" in
+    *.part1.rar)
+        RM_MASK="${1%1.rar}"[1-9].rar
+	;;
+    *.part01.rar)
+        RM_MASK="${1%01.rar}"[0-9][0-9].rar
+	;;
+    *.part*.rar)
+        # Do nothing - just to avoid `.part[0-9]?[02-9].rar' from matching next
+	# pattern and extracting it.
+	RM_MASK=
+	;;
+    *)
+        # Archive is just one file.
+	RM_MASK="$1"
+	;;
+    esac
+
+    # No files to extract.
+    [ -z "$RM_MASK" ] && return 0
+
+    try_to_extract unrar x -y -- "$1"
+}
+
+handle_zip()
+{
+    RM_MASK="$1"
+    try_to_extract unzip "$1"
+}
+
+# XXX: Assuming that the file is given as first argument.
+handle_tar()
+{
+    RM_MASK="$1"; shift
+    try_to_extract tar -xv "$@" "$RM_MASK"
+}
+
+handle_7z()
+{
+    RM_MASK="$1"
+    try_to_extract 7z x "$1"
+}
+
+handle_bzip2()
+{
+    RM_MASK="$1"
+    try_to_extract bzip2 -d "$1"
+}
+
+handle_gzip()
+{
+    RM_MASK="$1"
+    try_to_extract gzip -d "$1"
+}
+
+# XXX: Assuming that the file is given as first argument.
+extract_zipped_tar()
+{
+    local file="$1"; shift
+    local internal_mime_type=$(file -z --mime-type "$file" | sed 's/^.*: //')
+    local ret=1
+
+    [ -n "$DEBUG" ] && echo -n "Checking whether the file is a compressed tar... "
+
+    case "$internal_mime_type" in
+    application/x-tar)
+	[ -n "$DEBUG" ] && echo "Yes."
+	handle_tar "$file" "$@" -f
+	ret=$?
+	;;
+    *)
+	[ -n "$DEBUG" ] && echo "No."
+	;;
+    esac
+
+    return $ret
+}
+
+# XXX: Assuming that the file is given as first argument.
+extract_file()
+{
+    local file="$1"; shift
+    local mime_type=$(file --mime-type "$file" | sed 's/^.*: //')
+    local ret=1
+
+    [ -n "$DEBUG" ] && echo "Trying to extract $file..."
+    [ -n "$DEBUG" ] && echo -n "Getting mime-type... "
+
+    case "$mime_type" in
+    application/x-rar)
+	[ -n "$DEBUG" ] && echo "Ok, it's a rar file."
+	handle_rar "$file"
+	ret=$?
+	;;
+
+    application/zip)
+	[ -n "$DEBUG" ] && echo "Ok, it's a zip file."
+	handle_zip "$file"
+	ret=$?
+	;;
+
+    application/x-tar)
+	[ -n "$DEBUG" ] && echo "Ok, it's a tar file."
+	handle_tar "$file" -f
+	ret=$?
+	;;
+
+    application/x-gzip)
+	[ -n "$DEBUG" ] && echo "Ok, it's a gzip file."
+	extract_zipped_tar "$file" -z || handle_gzip "$file"
+	ret=$?
+	;;
+
+    application/x-bzip2)
+	[ -n "$DEBUG" ] && echo "Ok, it's a bzip2 file."
+	extract_zipped_tar "$file" --bzip2 || handle_bzip2 "$file"
+	ret=$?
+	;;
+
+    application/x-7z-compressed)
+	[ -n "$DEBUG" ] && echo "Ok, it's a 7zip file."
+	handle_7z "$file"
+	;;
+
+    application/octet-stream)
+	[ -n "$DEBUG" ] && echo "Failed to detect mime-type."
+	[ -n "$DEBUG" ] && echo -n "Getting ascii type... "
+        ascii_type=$(file "$file" | sed 's/^.*: //')
+
+	case "$ascii_type" in
+	*7-zip*)
+	    [ -n "$DEBUG" ] && echo "Ok, it's a 7zip file."
+	    handle_7z "$file"
+	    ret=$?
+	    ;;
+	*)
+	    [ -n "$DEBUG" ] && echo "Failed to detect ascii type."
+	    ;;
+	esac
+	;;
+    esac
+
+    [ -n "$DEBUG" ] && \
+	{
+	    [ $ret -eq 0 ] && echo "Successfully extracted $file..." || \
+	    echo "Failed to extract $file";
+	}
+}
+
+for i in "$@"; do
+    extract_file "$i"
+done
+

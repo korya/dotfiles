@@ -1,0 +1,27 @@
+#!/usr/bin/awk -f
+
+function usage()
+{
+    err = sprintf("Usage: %s FILENAME PATTERN\n\n" \
+	"  Grepx a given CVS FILENAME and prints the matching lines using cpl",
+	ARGV[0])
+    print err > "/dev/stderr"
+    exit 1
+}
+
+BEGIN {
+    if (ARGC != 3)
+	usage()
+
+    PATTERN=ARGV[2]
+    delete ARGV[2]
+}
+
+NR > 1 {
+    if ($0 ~ PATTERN)
+    {
+	system("cpl " FILENAME " " (NR - 1))
+    }
+}
+
+# vim: ft=awk :

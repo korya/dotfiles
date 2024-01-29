@@ -1,0 +1,69 @@
+# !/bin/bash
+
+RADIO_LIST_FILE="${HOME}/.radio.list"
+
+choose_station()
+{
+    awk -F, '
+      BEGIN {
+        urls[0] = ""
+	nurls = 0
+      }
+      NR > 1 {
+	printf("%d) %s: %s [%s]\n", nurls, $1, $3, $2)
+	urls[nurls] = $2
+        ++nurls
+      }
+      END {
+	while (1)
+	{
+	  printf "Choose the station: ";
+	  getline choose < "-";
+	  if (choose < 0)
+	    idx = nurls + choose
+	  else if (choose <= nurls)
+	    idx = choose
+	  if (system ("mpc clear && mpc add " urls[idx] " && mpc play") == 0)
+	    break
+
+	  printf("Error: failed to play the station\n");
+	}
+      }' "$RADIO_LIST_FILE"
+}
+
+add_station()
+{
+    local url="$1" name desc
+
+    echo -n "Enter station name: "
+    read name
+    echo -n "Enter station description: "
+    read desc
+    echo 'Adding `'"${name},${url},${desc}' to $RADIO_LIST_FILE"
+    echo "${name},${url},${desc}" >> $RADIO_LIST_FILE
+}
+
+usage()
+{
+    echo "Usage: $0 [cmd|URL]"
+    echo ""
+    echo "Commands:"
+    echo "  add URL - add a given URL to radio list"
+    echo "  help - view this text"
+    echo "If just a URL is given, it is added to playlist and being played."
+}
+
+if [ $# -gt 0 ]; then
+    case "$1" in
+	add)
+	    add_station "$2" ;;
+	help)
+	    usage ;;
+	*)
+	    mpc clear && mpc add "$1" && mpc play ;;
+    esac
+else
+    choose_station
+fi
+
+# vim: ft=sh : 

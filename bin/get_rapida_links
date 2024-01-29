@@ -1,0 +1,86 @@
+#! /bin/bash
+
+function usage() {
+    echo "Usage: ${0} [OPTION] [FILE] [LINK]" 
+    echo "Prints the links found in FILE(s) and in LINK(s) or standart input to standart output."
+    echo ""
+    echo "Options:"
+    echo "   -t  --template TEMPLATE    use template for links (by default rapidshare.com)"
+    echo "   -v  --verbose              verbose on (by default off)"
+    echo "   -h  --help                 view this text"
+    echo ""
+    echo "With no FILE, or when FILE is -, read standard input"
+}
+
+function error() {
+    echo "${0}: $1" >&2
+    exit 1
+}
+
+
+function get_from_line() {
+    echo "$1" | tr \<\>\"\' '\012' | sed 's/\r//g' | sort | uniq | grep "$looking_for" 
+}
+
+function get_links() {
+    if [ -f "$1" ]; then
+        text=`cat "$1"`
+    else
+        [ -n "$verbose" ] && out="" || out="-q"
+        text=`wget "$out" "$1" -O -`
+    fi
+    for i in $text; do
+        get_from_line "$i"
+    done
+}
+
+function from_stdin() {
+    while read line
+    do
+        get_from_line "$line"
+    done
+}
+
+looking_for="rapidshare.com"
+
+while [ -n "$1" ]
+do
+    case "$1" in
+        -t|--template)
+            looking_for="$2"
+            shift
+            ;;
+        -v|--verbose)
+            verbose="true"
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -) break
+            ;;
+        -*) usage >&2
+            exit 1
+            ;;
+        *) break
+            ;;
+    esac
+    shift
+done
+
+if [ $# -ne 0 ]; then
+    while [ -n "$1" ]
+    do
+        if [ "$1" == "-" ]; then
+            from_stdin
+        else
+            get_links "$1"
+        fi
+        shift
+    done
+else
+    from_stdin
+fi
+
+exit 0
+

@@ -4,7 +4,7 @@ set -e
 
 GVIM="$(command -v gvim || command -v mvim || command -v vim)"
 
-if [ $# -eq 1 ]; then
+if [[ $# -eq 1 ]] && [[ "$1" != - ]]; then
   file="$(sed <<<"$1" \
     -e 's/^\(.*\):\([0-9]\+\):\([0-9]\+\):.\+$/\1/' \
     -e 's/^\(.*\):\([0-9]\+\):\([0-9]\+\):\?$/\1/' \

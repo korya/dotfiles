@@ -1,0 +1,162 @@
+#!/usr/bin/expect --
+
+package require cmdline
+
+set timeout 9999999
+set send_slow {1 .01}
+
+proc hard_reboot {} {
+    send_user "\n\n# Performing hard reset...\n\n"
+    send_user "\t################################################\n"
+    send_user "\t## No JPWR? Hard-reset your board yourself!!! ##\n"
+    send_user "\t################################################\n\n"
+    if { ![catch {set jpwr [exec which jpwr]}] && [file executable $jpwr] } {
+	system jpwr reset
+    } else {
+	send_user "# Do it!!!!\n\n"
+#         expect_user -nocase "OK"
+    }
+}
+
+proc reboot_to_uboot {} {
+    hard_reboot
+    # Clean expect_out(buffer): remove all till the last boot
+    expect -re ".*NAND Read OK"
+    expect {
+	"Hit any key to stop autoboot:" { send " " }
+	-re "Can't determine a suitable \[a-z]* DQS delay for slice \[01]!\r\n" {
+	    send_user "Fix your U-boot!\n"
+	    send_user "See http://jsearch.home.jungo.com/dokuwiki/doku.php?id=ps:projects:vodafone:vodafone_vox_2.0:fix_vox_2.0_de_uboot\n"
+	    send_user "\n"
+	    exit 1
+	}
+    }
+}
+
+proc upgrade_uboot {uboot_img} {
+    reboot_to_uboot
+
+    expect "VR9 #" {
+	send -s "tftp \$(loadaddr) $uboot_img\n"
+	expect {
+	    -re "\r\nTFTP error: .*\r\n" { exit 1 }
+	    -re "\r\nBytes transferred = .*\r\n"
+	}
+    }
+    expect "VR9 #" {
+	send -s "nand erase 0 0x100000\n"
+	expect -re "\r\nOK\r\n"
+    }
+    expect "VR9 #" {
+	send -s "nand write.e \$(loadaddr) 0 0x100000\n"
+	expect {
+	    -re "\r\n \[0-9]\[0-9]* bytes written: ERROR\r\n" { exit 1 }
+	    -re "\r\n \[0-9]\[0-9]* bytes written: OK\r\n"
+	}
+    }
+}
+
+proc configure_uboot {boardtype} {
+    reboot_to_uboot
+
+    send_user "Configuring U-boot...\n"
+    expect "VR9 #" { send -s "setenv boardtype $boardtype\n" }
+    expect "VR9 #" {
+	send -s "setenv bootflash 'ubi part UBI; dualimage; set verify n; rg_go \$(openrg_start) \$(openrg_param0) \$(openrg_param1)'\n"
+    }
+    expect "VR9 #" {
+	send -s "setenv bootnet 'tftp \$(loadaddr) openrg.img; rg_go \$(loadaddr)'\n"
+    }
+    expect "VR9 #" { send -s "setenv bootcmd 'run bootflash'\n" }
+    expect "VR9 #" {
+	send -s "save\n"
+	expect -re "\r\nWriting to Nand... done\r\n"
+    }
+    expect "VR9 #" { send -s "reset\n" }
+    sleep 1
+}
+
+proc upgrade_ubi {ubi_img} {
+    reboot_to_uboot
+
+    send_user "Upgrading UBI...\n"
+    expect "VR9 #" {
+	send -s "tftp \$(loadaddr) $ubi_img\n"
+	expect {
+	    -re "\r\nTFTP error: .*\r\n" { exit 1 }
+	    -re "\r\nBytes transferred = .*\r\n"
+	}
+    }
+    expect "VR9 #" {
+        # Just in case
+	send -s "nand erase 0x100000 0x4540000\n"
+	expect -re "\r\nOK\r\n"
+    }
+    expect "VR9 #" {
+	send -s "nand erase 0x04640000 0x1b6c0000\n"
+	expect -re "\r\nOK\r\n"
+    }
+    expect "VR9 #" {
+	send -s "nand write.e \$(loadaddr) 0x04640000 \$(filesize)\n"
+	expect {
+	    -re "\r\n \[0-9]\[0-9]* bytes written: ERROR\r\n" { exit 1 }
+	    -re "\r\n \[0-9]\[0-9]* bytes written: OK\r\n"
+	}
+    }
+}
+
+proc upgrade_wireless {wireless_img} {
+    reboot_to_uboot
+
+    send_user "Upgrading Wireless Image...\n"
+    expect "VR9 #" {
+	send -s "tftp \$(loadaddr) $wireless_img\n"
+	expect {
+	    -re "\r\nTFTP error: .*\r\n" { exit 1 }
+	    -re "\r\nBytes transferred = .*\r\n"
+	}
+    }
+    expect "VR9 #" {
+	send -s "nand erase 0x1fd00000 0x100000\n"
+	expect -re "\r\nOK\r\n"
+    }
+    expect "VR9 #" {
+	send -s "nand write.e \$(loadaddr) 0x1fd00000 \$(filesize)\n"
+	expect {
+	    -re "\r\n \[0-9]\[0-9]* bytes written: ERROR\r\n" { exit 1 }
+	    -re "\r\n \[0-9]\[0-9]* bytes written: OK\r\n"
+	}
+    }
+}
+
+set optlist {
+    {tty.arg       "" "TTY device (required)"}
+    {uboot.arg     "" "U-boot image to install"}
+    {ubi.arg       "" "UBI image to install"}
+    {wireless.arg  "" "Wireless image to install"}
+    {boardtype.arg "" "Board type"}
+    {noreboot         "Do not reboot the board at the end of the script"}
+}
+set usage ": [::cmdline::getArgv0] \[OPTIONS\] -tty <TTY-DEVICE>\n\nOptions:"
+
+if { [catch {array set param [::cmdline::getoptions argv $optlist $usage]} ERR] } {
+    send_user $ERR
+    exit 1
+}
+
+if { [string length $param(tty)] == 0 } {
+    send_user "Error: TTY is not specified\n\n"
+    send_user [::cmdline::usage $optlist $usage]
+    exit 1
+}
+
+parray param
+
+set spawned [spawn -leaveopen [open $param(tty) w+]] 
+stty ispeed 115200 ospeed 115200 raw -echo -cooked cs8 -parenb -cstopb -ocrnl -onlcr -icrnl -inlcr < $param(tty)
+
+if { $param(uboot) != "" } { upgrade_uboot $param(uboot) }
+if { $param(boardtype) != "" } { configure_uboot $param(boardtype) }
+if { $param(ubi) != "" } { upgrade_ubi $param(ubi) }
+if { $param(wireless) != "" } { upgrade_wireless $param(wireless) }
+if { $param(noreboot) == "0"} { hard_reboot }

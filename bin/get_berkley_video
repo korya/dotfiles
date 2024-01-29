@@ -1,0 +1,86 @@
+#!/bin/bash
+
+THE_PAGE="$1"
+
+PATTERN='stream.php?type=real&webcastid='
+SAFE_PAT=`echo $PATTERN | sed 's/\?/\\\?/g'`
+
+# temp file for storing the links to rtsp streams links
+link_temp_file="/tmp/`echo $0 | sed 's/.*\///'`.$$"
+
+came_from=`pwd`
+
+function clean() {
+    rm "${link_temp_file}" "${link_temp_file}_"
+    cd "$came_from"
+}
+
+function numerate() {
+    [ $1 -lt 10 ] && echo -n '0'
+    echo $1
+}
+
+# getting the page
+wget -q "$THE_PAGE" -O - > "${link_temp_file}_"
+
+# getting the course name
+COURSE_NAME=`cat "${link_temp_file}_" | 
+    tr \<\> '\n' | 
+    sed -n '/^title$/,/^\/title$/ p' |
+    sed -n '2 p' |
+    cut -d':' -f2 |
+    tr ' ' '_'`
+
+mkdir -p ~/download/berkley/$COURSE_NAME
+cd ~/download/berkley/$COURSE_NAME 
+
+# If failed to change dir - exit
+if [ $? -ne 0 ]; then 
+    clean
+    exit 1
+fi
+
+# getting these links
+cat "${link_temp_file}_" |
+    grep "$PATTERN" |
+    sed -e 's/<\/td>/\n/g; s/<\/tr>/\n/g' |
+    awk '/'"$SAFE_PAT"'/ {
+        num=split($0, temp, "\"")
+        for(i=1; i<=num; ++i)
+            if( temp[i] ~ "stream" ) LINK[CURR]=temp[i]
+        ++CURR
+        LAST_SEEN=NR
+    }
+    LAST_SEEN==NR-4 {
+        NAME[CURR-1]=substr($0,5,length($0))
+    }
+    END {
+        for(i=1; i<CURR; ++i)
+            printf "http://webcast.berkeley.edu/%s\t%s\n",LINK[i],NAME[i]
+    }' | tr ' ' _ > "$link_temp_file"
+
+while :
+do
+    NUM=0
+    for i in `cat "$link_temp_file"`
+    do
+        echo "$i" | grep '^http' 2>/dev/null 1>&2
+        if [ $? -eq 0 ]; then
+            rtsp_link=`wget -q "$i" -O -`
+        else
+            lecture_name="`numerate $NUM`"'_'"`echo $i | tr / _ `"
+            let "NUM+=1"
+            [ -f "$lecture_name" ] && continue
+            mplayer -noframedrop -dumpfile "$lecture_name" -dumpstream "$rtsp_link"
+            [ $? -ne 0 ] && RESTART='true'
+        fi
+    done
+    [ -z "$RESTART" ] && sleep 7m &&  break
+#    rtsp_link=`echo $i | sed -n '/^http/p'`
+#    rtsp_link=`wget -q "$rtsp_link" -O -`
+#    echo $rtsp_link
+    #mplayer -noframedrop -dumpfile out.rm -dumpstream "$rtsp_link"
+done
+
+rm $link_temp_file ${link_temp_file}_
+

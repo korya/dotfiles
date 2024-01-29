@@ -1,0 +1,89 @@
+#!/bin/bash
+
+PERIOD=5m
+LOCK_FILE=/tmp/synergyd
+
+get_hosts()
+{
+    cat <<EOF | sed 's/#.*$//; /^$/d'
+ajax.home.jungo.com
+132.69.238.10 # technion dorms
+192.168.1.10
+EOF
+}
+
+sighandler()
+{
+    echo $(basename $0): I am killed
+    rm -f "$LOCK_FILE"
+    exit 0
+}
+
+daemon_loop()
+{
+    trap 'sighandler' 1 2 15 
+#     echo $$ > "$LOCK_FILE"
+
+    # Do not sleep too long for a first time
+    CURR_PERIOD=3s
+    while sleep $CURR_PERIOD; do
+	HOST=$(get_hosts | while read host; do
+		if ping -c3 "$host" >/dev/null; then
+		    echo "$host"
+		    break
+		fi
+	    done)
+
+	synergyc --no-daemon --no-restart "$HOST" &
+	echo $! >> "$LOCK_FILE"
+	wait
+	# synergys is already dead -- remove its pid
+	sed -i '$d' "$LOCK_FILE"
+	CURR_PERIOD=$PERIOD
+    done
+}
+
+[ $# -ne 1 ] && set -- bad-usage
+
+case "$1" in
+start)
+    if [ -f "$LOCK_FILE" ]; then
+	echo "$(basename $0) is already running." >&2
+	exit 1
+    fi
+
+    daemon_loop &
+    # Implicit assumption: father will write before the child. If not -- try
+    # increasing an initial sleep period of the child.
+    echo $! > "$LOCK_FILE"
+    ;;
+
+stop)
+    if [ ! -f "$LOCK_FILE" ]; then
+	echo "$(basename $0) is not running." >&2
+	exit 1
+    fi
+
+    PIDS=( $(cat "$LOCK_FILE") )
+    if [ ${#PIDS[@]} -gt 1 ]; then
+	kill ${PIDS[1]}
+    fi
+    # XXX: -9 to kill even when it called `sleep'
+    kill -9 ${PIDS[0]}
+    rm "$LOCK_FILE"
+    ;;
+
+restart)
+    "$0" stop
+    sleep 2
+    "$0" start
+    ;;
+
+*)
+    echo "Usage: $(basename $0) <start|stop|restart>" >&2
+    exit 2
+    ;;
+esac
+
+exit 0
+

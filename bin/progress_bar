@@ -1,0 +1,149 @@
+#!/bin/bash
+# original - http://posix.ru/shell/bash_tips/
+#
+
+POST_PERCENT=1
+PRE_PERCENT=2
+
+CHAR_LEADER='>'
+CHAR_RBORDER=']'
+CHAR_LBORDER='['
+CHAR_EMPTY=' '
+CHAR_FILL='='
+
+WIDTH=27
+PRINT_PERCENT=$PRE_PERCENT
+
+MAXVALUE=100
+MINVALUE=0
+
+usage() {
+    echo "Usage: $0 [options] [VAL]"
+    echo "If VAL is set, then printing progress bar for this value. Else "\
+         "reading values from stdin and printing corresponding progress bar."
+    echo " "
+    echo "Options:"
+    echo "   -l|--lborder CHAR - set char for left border (by default '[')."
+    echo "   -r|--rborder CHAR - set char for rigth border (by default ']')."
+    echo "   -L|--clead CHAR   - set char for leading char in progress (by default '>')."\
+         " When just -L is given (without CHAR), then leading char is equal to fill char."
+    echo "   -e|--cempty CHAR  - set char for empty part (by default space)."
+    echo "   -f|--cfill CHAR   - set char for progress (by default '=')."
+    echo "   -M|--max MAX      - set max value (by default 100)."
+    echo "   -m|--min MIN      - set min value (by default 0)."
+    echo "   -w|--width NUM    - set width of the bar (by default 25)."
+    echo "   -p|--post-percent - prints the percents after the bar (by default before)."
+    echo "   -q|--no-percent   - does not prints the percents (by default off)."
+    echo "   -h|--help         - view this text."
+}
+
+bad_usage() {
+    if [ -z "$1" ]; then 
+	echo "Bad usage..."   1>&2
+	echo "Try: $0 --help" 1>&2
+    else
+	echo "$1" 1>&2
+    fi
+    exit 1
+}
+
+while [ -n "$1" ]; do
+    case "$1" in
+    -p|--post-percent)
+	PRINT_PERCENT=$POST_PERCENT
+	;;
+    -q|--no-percent)
+	PRINT_PERCENT=0
+	;;
+    -l|--lborder)
+	shift
+	[ -n "$1" ] && CHAR_LBORDER="$1" || bad_usage
+	;;
+    -r|--rborder)
+	shift
+	[ -n "$1" ] && CHAR_RBORDER="$1" || bad_usage
+	;;
+    -L|--clead)
+	shift
+	[ -n "$1" ] && CHAR_LEADER="$1" || CHAR_LEADER="$CHAR_FILL"
+	;;
+    -e|--cempty)
+	shift
+	[ -n "$1" ] && CHAR_EMPTY="$1" || bad_usage
+	;;
+    -f|--cfill)
+	shift
+	[ -n "$1" ] && CHAR_FILL="$1" || bad_usage
+	;;
+    -M|--max)
+	shift
+	[ -n "$1" ] && MAXVALUE="$1" || bad_usage
+	[ $MAXVALUE -le $MINVALUE ] ||\
+	    bad_usage "Maximum value should be greater than the minimum."
+	;;
+    -m|--min)
+	shift
+	[ -n "$1" ] && MINVALUE="$1" || bad_usage
+	[ $MAXVALUE -le $MINVALUE ] ||\
+	    bad_usage "Maximum value should be greater than the minimum."
+	;;
+    -w|--width)
+	shift
+	[ -n "$1" ] && WIDTH="$1" || bad_usage
+	;;
+    -h|--help)
+	usage
+	exit 0
+	;;
+    -*)
+	usage 1>&2
+	exit 1
+	;;
+    *)
+	break
+	;;
+    esac
+    shift
+done
+
+WIDTH=$((WIDTH-2))
+let "MAXVALUE-=MINVALUE"
+
+# Prints the progress bar corresponding to the value.
+# @1 - the value of progress
+# If $1 is not set then the value is $MINVALUE
+progress() {
+    local curr="${1-$MINVALUE}" pos=$WIDTH perc=100
+    curr=$[ $curr - $MINVALUE ]
+    if [ $curr -lt $MAXVALUE ]; then
+	pos=$((curr*WIDTH/MAXVALUE))
+	perc=$((curr*100/MAXVALUE))
+    fi
+    local fill_width=$((WIDTH-pos))
+    [ "$PRINT_PERCENT" -eq "$PRE_PERCENT" ] &&\
+	echo -n "$perc% "
+    echo -n $CHAR_LBORDER
+    if [ "$pos" -gt 0 ]; then
+	echo -n $(printf "%$((pos-1))s" | tr ' ' "$CHAR_FILL")
+	echo -n $CHAR_LEADER
+    #else 
+	#fill_width=$((fill_width-1))
+    fi
+    #if [ "$CHAR_EMPTY"==' ' ]; then
+    #	echo -n "$(printf "%${fill_width}s")"
+    #else
+	echo -n "$(printf "%${fill_width}s" | tr ' ' "$CHAR_EMPTY")"
+    #fi
+    echo -n $CHAR_RBORDER
+    [ "$PRINT_PERCENT" -eq "$POST_PERCENT" ] && echo -n " $perc%"
+}
+
+if [ -n "$1" ]; then
+    progress $1
+    exit 0
+fi
+
+while read line; do
+    progress $line
+done
+

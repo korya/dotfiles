@@ -1,0 +1,100 @@
+#!/bin/bash
+
+PATTERN='^http://depositfiles.com/files/.*$'
+#PATTERN='rapidshare.com/files/.*'
+
+#
+# Prints the usage text
+#
+function usage() {
+    echo "Usage: ${0} [OPTION] [FILE] [LINK]" 
+    echo "Prints the links found in FILE(s) and in LINK(s) or standart input to standart output."
+    echo ""
+    echo "Options:"
+    echo "   -p  --pattern TEMPLATE     use the pattern for finding links (by default rapidshare.com)"
+    echo "   -v  --verbose              verbose on (by default off)"
+    echo "   -h  --help                 view this text"
+    echo ""
+    echo "With no FILE, or when FILE is -, read standard input"
+}
+
+#
+# Prints error message passed by $1 and exits
+#
+function error() {
+    echo "${0}: $1" >&2
+    exit 1
+}
+
+#
+# Looks for a pattern
+#
+function get_matches() { 
+    tr \=\<\>\"\'\ '\r' '\n' | \
+        # Sometimes the rapida links are inserted into redirect links.
+        sed 's#%2F#/#g; s/&#58;/:/g; s#%3A#:#g; s#^href=\(.*\)$#\1#g' | \
+	grep -E "$PATTERN" | \
+	sort | uniq 
+}
+
+function get_links() {
+    if [ -f "$1" ]; then
+        cat "$1" | get_matches
+    else
+        [ -n "$verbose" ] && out="" || out="-q"
+        wget "$out" "$1" -O - | get_matches
+    fi
+}
+
+#
+# Reads the input from stdin
+#
+function from_stdin() {
+    while read line
+    do
+        echo "$line" | get_matches
+    done
+}
+
+while [ -n "$1" ]
+do
+    case "$1" in
+        -p|--pattern)
+            PATTERN="$2"
+            shift
+            ;;
+        -v|--verbose)
+            verbose="true"
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -) break
+            ;;
+        -*) usage >&2
+            exit 1
+            ;;
+        *) break
+            ;;
+    esac
+    shift
+done
+
+if [ $# -ne 0 ]; then
+    while [ -n "$1" ]
+    do
+        if [ "$1" == "-" ]; then
+            from_stdin
+        else
+            get_links "$1"
+        fi
+        shift
+    done
+else
+    from_stdin
+fi 
+
+exit 0
+
+

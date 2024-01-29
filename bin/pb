@@ -1,0 +1,21 @@
+#!/bin/bash 
+
+WMS_LAST_PID=""
+
+s() {
+	echo $1 'starting...' >&2
+	sleep 10 &
+	WMS_LAST_PID="$!"
+	echo "got $WMS_LAST_PID"
+	echo $1 'starting done.' >&2
+}
+
+s 1 
+echo $WMS_LAST_PID
+s 2
+echo $WMS_LAST_PID
+s 3
+echo $WMS_LAST_PID
+
+wait $WMS_LAST_PID
+

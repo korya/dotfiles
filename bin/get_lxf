@@ -1,0 +1,23 @@
+#!/bin/bash
+
+out_dir="$HOME/download/lxf"
+
+if [ ! -d "$out_dir" ]; then
+    mkdir -p "$out_dir"
+fi 
+
+i=70;
+while [ "$i" -lt 100 ]; do
+   	output_dir="--directory-prefix=$out_dir"
+    if [ "$i" -eq 74 -o "$i" -eq 75 ]; then
+        link="http://www.linuxformat.ru/download/74-75.pdf"
+    elif [ "$i" -eq 87 -o "$i" -eq 88 ]; then
+        link="http://www.linuxformat.ru/download/87-88.pdf"
+    else
+        link="http://www.linuxformat.ru/download/${i}.pdf"
+    fi
+    wget -c $output_dir $link
+
+    let "i++"
+done
+

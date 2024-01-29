@@ -1,0 +1,59 @@
+#!/bin/bash
+
+BFILE="$HOME/.backup_list"
+svn_msg=''
+omit=''
+
+help()
+{
+    echo -en "Usage: $0 [OPTIONS] [-- tar-opts]\n"
+    echo -en "When you want to set tar options you need to insert -- before "
+    echo -en "them to separate it from OPTIONS.\n"
+    echo -en "Options:\n"
+    echo -en "    -m|--ci-msg MSG  - MSG is used as a message for svn commit.\n"
+    echo -en "    --omit-svn       - skip svn commit stage\n"
+    echo -en "    --omit-tar       - skip creation of .tgz backup file\n"
+    echo -en "\n"
+    echo -en "tar-opts are options for $(which tar), which is used by "
+    echo -en "backup.\n"
+}
+
+while [ $# -ne 0 ]; do
+    case "$1" in
+    -m|--ci-msg)
+        shift
+        svn_msg="$1"
+	;;
+    --omit-svn|--omit-tar)
+	omit="$omit ${1/--omit-/}"
+        ;;
+    --)
+	shift
+	break
+        ;;
+    -h|--help|-*)
+	help >&2
+	[ "$1" == '-h' -o "$1" == '--help' ] && exit 0
+	exit 1
+        ;;
+    esac
+    shift
+done
+
+if [[ "$omit" != *svn* ]]; then
+    if [ -z "$svn_msg" ]; then
+	svn_msg="Backup for $USER@$HOSTNAME at $(date +%H:%M:%S-%d.%m.%Y)."
+    fi
+    svn ci -m "$msg" || exit $?
+fi
+
+if [[ "$omit" != *tar* ]]; then
+    if [ ! -f "$BFILE" ]; then
+	echo "The list of backup files \"$BFILE\" does not exist." 2>/dev/null
+	exit 1
+    fi
+#     opts="czf"
+#     tar $opts backup.$(date +%Y%m%d%H%M).tgz $(cat "$BFILE") $*
+    tar -czf backup.$(date +%Y%m%d%H%M).tgz $(cat "$BFILE") $* || exit $?
+fi
+

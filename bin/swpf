@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# This scripts receives two existing files and 
+# swaps their names.
+#
+
+usage() {
+	echo "Usage: $0  file1 file2"
+	echo "The script will swap the filenames of file1 and file2"
+	echo " "
+	echo "Options:"
+	echo "    -h, --help        -to view this text"
+}
+
+if [ "$1" == "-h" -o "$1" == "--help" ]; then
+	usage
+	exit 0
+fi
+
+[ $# -ne 2 ] && usage >&2 && exit 1
+
+temp_suffix="$0_$$"
+
+mv "$1" "$1.$temp_suffix" || exit 1
+
+mv "$2" "$1"
+if [ 0 -ne $? ]; then
+	mv "$1.$temp_suffix" "$1"
+	exit 1
+fi
+
+mv "$1.$temp_suffix" "$2"
+if [ 0 -ne $? ]; then
+	mv "$1" "$2"
+	mv "$1.$temp_suffix" "$1"
+	exit 1
+fi
+

@@ -1,0 +1,62 @@
+#!/bin/bash
+
+job_file="${HOME}/.rapida_jobs"
+
+output_dir="${HOME}/download"
+
+#if [ "$1" = "-o" -a -n "$2" ]; then
+#	output_dir="$2"
+#fi
+#
+#if [ "$1" = "-v" ]; then
+#	verbose="true"
+#fi
+
+function usage {
+	echo -e "   Usage: $0 [options] "
+	echo -e " Options:"
+	echo -e "\t-v\tverbose on(default off)"
+	echo -e "\t-o OUTPUT_DIR\tdownloading to OUTPUT_DIR/"
+	echo -e "\t-i INOUT_FILE\tget links for download from the file"
+	echo -e "\t\t\t (the file should contain only links for download,"
+	echo -e "\t\t\t each line per one link."
+	echo -e "\t-h --help\tview this text"
+    exit 0
+}
+
+function error {
+	echo -e "${0}: $1" >&2
+	exit 1
+}
+
+while [ $# -ne 0 ]; do
+	case "$1" in
+		-v) verbose="true" ;;
+		-o) [ -n "$2" ] && output_dir="$2" && shift || error "Output directory is illegal." ;;
+		-i) [ -n "$2" -a -e "$2" ] && job_file="$2" && shift || error "Input file is illegal." ;;
+		-h|--help|-*) usage ;;
+		*) break ;;
+	esac
+	shift
+done
+
+mkdir -p "$output_dir" || exit $?
+
+
+while [ -e "${job_file}" ]
+do
+	curr_job=`cat ${job_file} | grep "rapidshare.com" | head -1`
+
+	[ -n "$verbose" ] && echo "Starting download of ${curr_job}"
+
+	[ -z "$curr_job" ] && exit 0
+	rapida -o $output_dir $curr_job || exit $?
+#	res=$?
+#	[ $res -ne 0 ] && exit $res
+	
+	[ -n "$verbose" ] && echo "Finished download of ${curr_job}"
+
+	cat ${job_file} | grep "rapidshare.com" | tail -n +2 > ${job_file}_tmp
+	[ $? -eq 0 ] && cat ${job_file}_tmp > ${job_file} && rm ${job_file}_tmp
+done
+

@@ -1,0 +1,83 @@
+#!/bin/bash
+
+NWORKERS=5
+WORKER_PIPE_PREFIX="/tmp/parapida.$$"
+WORKER_PIPES=()
+RAPIDA_PROG=rapida
+# A worker next task should be added to.
+RR_NEXT_WORKER=0
+
+DEBUG=1
+
+usage()
+{
+    echo -e "Usage: $0 [OPTIONS] [TASKS]"
+    echo -e " "
+    echo -e "Options:"
+    echo -e "   -nw --nworkers NUM - set maximal number of workers to NUM." \
+            "(by default $NWORKERS)"
+    echo -e "   -rr --round-robinc - use round robin algorithm." \
+            "(by default using other algorithm. See the sources (: )"
+    echo -e "   -h  --help         - view this text."
+}
+
+# Add a new task $2 to worker $1
+add_tasks()
+{
+    worker_num=$1 && shift
+    worker_pipe="${WORKER_PIPES[$worker_num]}"
+
+    for task; do
+	if [ -n "$DEBUG" ]; then
+	    echo Task for worker $worker_num is added: "$task" 
+	else
+	    echo "$task" > "$worker_pipe"
+	fi
+    done
+    "$RAPIDA_PROG" "$@" &
+}
+
+# Distribute the tasks between workers using round robin algorithm.
+round_robin()
+{
+    for task; do
+	add_tasks "$RR_NEXT_WORKER" "$task"
+	RR_NEXT_WORKER=$[ ($RR_NEXT_WORKER + 1) % $NWORKERS ]
+    done
+}
+
+almost_round_robin()
+{
+    local ntasks_for_each=$[ $# / $NWORKERS ]
+    local nredundant_tasks=$[ $# % $NWORKERS ]
+
+    while [ $# -gt 0 ]; do
+	local tasks=()
+
+	for ((j=0; j < $ntasks_for_each; ++j)); do
+	    tasks=( "${tasks[@]}" "$1" )
+	    shift
+	done
+
+	if [ $nredundant_tasks -gt 0 ];then
+	    tasks=( "${tasks[@]}" "$1" )
+	    shift
+	    let 'nredundant_tasks--'
+	fi
+
+	add_tasks "$RR_NEXT_WORKER" "${tasks[@]}"
+	RR_NEXT_WORKER=$[ ($RR_NEXT_WORKER + 1) % $NWORKERS ]
+    done
+}
+
+ALGORITHM=almost_round_robin
+[ -n "$1" ] && [ "$1" = "-rr" ] && ALGORITHM=round_robin && shift
+
+if [ $# -gt 0 ]; then
+    $ALGORITHM "$@"
+else
+    while read task; do
+	[ -n "$task" ] && $ALGORITHM "$task"
+    done
+fi
+

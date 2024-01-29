@@ -1,0 +1,56 @@
+#!/bin/bash
+
+set -e
+
+usage()
+{
+    echo "Usage: `basename $0` <file>"
+    echo "  Retreives CVS program (required to get the patch) from CVS_PROG."
+}
+
+# Given a filename, returns the CVS program to use in order to generate the patch
+# @1 - filename
+# @output - CVS program name
+detect_cvs()
+{
+    local path="$(dirname "$1")" prev_path
+
+    if [ ${path:0:1} != "/" ]; then
+	path="$(pwd)/$path"
+    fi
+
+    # Per dir CVS-s: search for filename's sibling that is some-CVS working dir
+    [ -d "$path/.svn" ] && echo svn && return 0
+    [ -d "$path/CVS" ] && echo cvs && return 0
+
+    # Monotonic CVS-s: try to find repo root directory contatining CVS working dir
+    while [ "$path" != "$prev_path" ]; do
+	[ -d "$path/.git" ] && echo git && return 0
+	[ -d "$path/.hg" ] && echo hg && return 0
+	# For new versions of SVN
+	[ -d "$path/.svn" ] && echo svn && return 0
+
+	prev_path="$path"
+	path="$(dirname "$path")"
+    done
+
+    return 1
+}
+
+[ -z "$1" ] && usage && exit 1
+
+orig_file="$1"; shift
+
+[ -z "$CVS_PROG" ] && CVS_PROG="$(detect_cvs "$orig_file")"
+
+# Create a temp file.
+trap 'rm $tmpfile 2>/dev/null' 0 1 2 15
+tmpfile=$(mktemp /tmp/svndiff.tmp.XXXXXX)
+
+## Cary repo version
+cp "$orig_file" "$tmpfile"
+"${CVS_PROG}" diff "$@" "$orig_file" | patch -p0 -R -s "$tmpfile"
+
+gvimdiff -f -c 'wincmd l' -c '0' "$tmpfile" "$orig_file"
+
+exit 0

@@ -1,0 +1,78 @@
+#!/bin/sh
+
+# The protocol for using volumed:
+# 1. A process that wanna to be served creates a file (volumed will write its
+#  response  to that file.
+# 2. It writes next line to $FIFO_PREFIX:
+#  OUTPUT_FILE:COMMAND
+#  where OUTPUT_FILE is the file created in step one (if there is no OUTPUT_FILE
+#  the command will still executed), COMMAND is the command for volumed
+# 3. Then read the result from the file.
+
+#TODO: client and daemon should have the same config file. Or the script
+#      might be used in both cases, as daemon and as client.
+FIFO_PREFIX=/tmp/volumed
+FIFO=${FIFO_PREFIX}
+# mute = Master is mutted 
+MUTE_CONTROL=Master
+CONTROL=PCM
+DEFAULT_SEEK_UNIT=5
+VERBOSE=Y
+MAIN_STATUS_OUT=
+
+[ -n "$VERBOSE" ] && echo Starting the daemon.
+
+if ls "${FIFO_PREFIX}"* >/dev/null 2>&1; then
+    [ -n "$VERBOSE" ] && \
+	echo -n "Daemon is already running. If it is not, remove ${FIFO}." >&2
+    exit 1
+fi
+
+status()
+{
+    if amixer -c0 sget "$MUTE_CONTROL" | grep -Ee '\[off\]' >/dev/null; then
+	echo mutted
+	return
+    fi
+
+    amixer -c0 sget "$CONTROL" | grep -oEe '[0-9][0-9]*%' | sed 1\ q
+}
+
+trap 'rm -f "$FIFO"; exit' 1 2 15
+mkfifo $FIFO
+
+while [ 0 ]; do
+    IFS='\n' read command < $FIFO
+    ofile=${command%:*}
+    command=${command#$ofile:}
+
+    [ -z "$ofile" ] && ofile=/dev/null
+    set -- $command
+    case "$1" in
+    up)
+	amixer -c0 sset $CONTROL ${2-$DEFAULT_SEEK_UNIT}%+ >"$ofile"
+	status
+	;;
+    down)
+	amixer -c0 sset $CONTROL ${2-$DEFAULT_SEEK_UNIT}%- >"$ofile"
+	status
+	;;
+    mute-toggle)
+	( amixer -c0 sget "$MUTE_CONTROL" | \
+	    grep -Ee '\[[0-9][0-9]*%\].*\[on\]' && \
+	    amixer -c0 sset "$MUTE_CONTROL" mute || \
+	    amixer -c0 sset "$MUTE_CONTROL" unmute ) >"$ofile"
+	status
+	;;
+    status)
+	status >"$ofile"
+	;;
+    stop)
+	break
+	;;
+    esac
+done
+
+[ -n "$VERBOSE" ] && echo Daemon is stopped.
+rm -f "$FIFO"
+

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+wget -q "$1" -O - | grep "rapidshare"  | \
+sed 's/\(^.*"\(http:\/\/rapidshare\.com\/[^"]*\)".*$\)/\2/' 
+

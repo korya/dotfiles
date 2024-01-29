@@ -1,0 +1,25 @@
+#!/bin/bash
+
+prev_dir=`pwd`
+
+cd $1
+
+#for i in `ls -a /media/sda5/ | grep "\.m3u$"`; do
+# for i in *.m3u; do
+#    if [ -e "$i" ]; then
+#        rm "$i" 
+#    fi
+# done
+
+[ -e "Thumbs.db" ] && rm "Thumbs.db"
+[ -e "thumbs.db" ] && rm "thumbs.db"
+
+for i in `ls`; do
+    if [ -d "$i" -a "$i" != "." -a "$i" != ".." ]; then
+        echo "Going to $i"
+        $0 $i
+    fi
+done
+
+cd $prev_dir
+

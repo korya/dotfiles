@@ -1,0 +1,38 @@
+#!/usr/bin/awk -f
+
+function usage()
+{
+    err = sprintf("Usage: %s FILENAME LINENO\n\n" \
+        "  Prints a given LINENO from a given CSV FILENAME " \
+	"in human-readable form.", ARGV[0]);
+    print err > "/dev/stderr"
+    exit 1
+}
+
+BEGIN {
+    FS=","
+
+    if (ARGC != 3)
+	usage()
+
+    LINENO = ARGV[2] + 1
+    delete ARGV[2]
+}
+
+NR == 1 {
+    ncols = NF
+    for (i = 1; i <= ncols; i++)
+	col_name[i] = $i
+}
+
+NR == LINENO {
+    for (i = 1; i <= ncols; i++)
+	col_val[i] = $i
+}
+
+END {
+    for (i = 1; i <= ncols; i++)
+	printf("%s: %s\n", col_name[i], col_val[i])
+}
+
+# vim: ft=awk :
