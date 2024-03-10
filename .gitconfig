@@ -3,7 +3,7 @@
 	email = korya.github@gmail.com
 	signingkey = 844EA3F966C652C5
 [diff]
-	tool = gvimdiff
+	tool = vimdiff
 	guitool = gvimdiff
 	colorMoved = zebra
 [difftool]
@@ -21,7 +21,7 @@
 [gpg]
 	program = gpg
 [core]
-	editor = gvim
+	editor = nvim
 [pull]
 	rebase = true
 [init]
