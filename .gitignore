@@ -6,9 +6,26 @@
 # Machine-specific files
 .aws/
 .bash_history
+.boto
 .cache/
+.cargo/
+.cursor/
 .docker/
+.gk/
+.local/
+.kube/
+.modular/
+.npm/
+.nvm/
 .ssh/
+.viminfo
+.vscode/
+.yarnrc
+.zcompdump*
+.zsh_history
+.zsh_sessions/
+.zim/
+dev/
 go/
 tmp/
 __pycache__/
