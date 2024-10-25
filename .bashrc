@@ -56,8 +56,6 @@ fi
 
 # set PATH so it includes user's private bin if it exists
 test -d "$HOME/bin" && export PATH="$HOME/bin:$PATH"
-test -d "$HOME/.cargo/bin" && export PATH="$HOME/.cargo/bin:$PATH"
-test -f "$HOME/.cargo/env" && source "$HOME/.cargo/env"
 test -d /usr/local/opt/qt/bin && export PATH="/usr/local/opt/qt/bin:$PATH"
 test -d /usr/local/opt/openjdk/bin && export PATH="/usr/local/opt/openjdk/bin:$PATH"
 

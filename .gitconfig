@@ -1,3 +1,6 @@
+[core]
+	editor = gvim -f
+	pager = less -XF
 [user]
 	name = korya
 	email = 148461+korya@users.noreply.github.com
@@ -10,6 +13,7 @@
 	prompt = false
 [push]
 	default = simple
+	autoSetupRemote = true
 [filter "hawser"]
 	clean = git hawser clean %f
 	smudge = git hawser smudge %f
@@ -20,8 +24,6 @@
 	gpgsign = false
 [gpg]
 	program = gpg
-[core]
-	editor = gvim -f
 [pull]
 	rebase = true
 [init]
