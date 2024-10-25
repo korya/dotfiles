@@ -72,59 +72,6 @@ sttl()
     echo -ne "\033]0;""$@""\007"
 }
 
-findx()
-{
-    [ $# -eq 1 ] && find . -iname '*'"$1"'*'
-}
-
-grepx()
-{
-    local target=
-
-    [ $# -le 2 -o ! -e "${!#}" ] && target=.
-    grep --exclude-dir\=.svn --exclude-dir\=CVS --exclude-dir\=.git \
-	--exclude\=cscope{,.po,.in}.out --exclude='.#*' \
-	-HREn "$@" $target
-}
-
-# XXX: defined as function because of easea
-grepc()
-{
-    grepx --include='*.[ch]' "$@"
-}
-
-# XXX: defined as function because of easea
-grepm()
-{
-    grepx --include='*.mk' --include='*.mak' --include='Makefile*' \
-	--include='*/Makefile*' --include='Kconfig*' --include='*/Kconfig*' \
-	--include='Kbuild*' --include='*/Kbuild*' "$@"
-}
-
-# XXX: defined as function because of easea
-grepj()
-{
-    grepx --include='*.java' "$@"
-}
-
-# XXX: defined as function because of easea
-grepjs()
-{
-    grepx --include='*.js' "$@"
-}
-
-# C#
-grepc#()
-{
-    grepx --include='*.cs' "$@"
-}
-
-# XXX: defined as function because of easea
-grepml()
-{
-    grepx --include='*.ml' --include='*.mli' "$@"
-}
-
 mnt()
 {
     sudo mount /dev/$1 /media/usb -o users,uid=$UID
@@ -154,17 +101,6 @@ c()
 
 alias nobeep='xset b off; xset b 0 0 0'
 alias gitdiff='CVS_PROG=git svndiff'
-
-## Aliases
-# 1 to 7 for first 7 results
-# for i in `seq 1 7`; do
-#     alias $i='eval gvim $( eval $(history | sed "s/^ *[0-9][0-9]*  *//" | grep -E ^[re]?grep | tail -1) | cut -d: -f1,2 | sed "s/:/ +/" | sed -n '$i'p)'
-# done
-# -1 to -7 for last 7 results 
-# for i in `seq 1 7`; do
-#     alias -- -$i='eval gvim $( eval $(history | sed "s/^ *[0-9][0-9]*  *//" | grep -E ^[re]?grep | tail -1) | cut -d: -f1,2 | sed "s/:/ +/" | tail -'$i' | head -1)'
-# done
-# unset i
 
 #
 # change font for console
