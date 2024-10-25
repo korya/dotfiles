@@ -157,12 +157,13 @@ alias ls='ls --color=auto'
 alias grep='grep --colour=auto'
 alias egrep='egrep --colour=auto'
 
-. ~/.bash.d/init/S010-local_env.sh
-. ~/.bash.d/init/S023-python.sh
-. ~/.bash.d/init/S030-mojo.sh
-. ~/.bash.d/init/S135-mac-brew.sh
-. ~/.bash.d/init/S210-alias.sh
-. ~/.bash.d/init/S240-docker.sh
+# Reuse bash init scripts. Skip S9xx-*.sh, these contain bash-specific settings.
+ls ~/.bash.d/init/S[0-8]*.sh >/dev/null 2>&1 && \
+for m in ~/.bash.d/init/S[0-8]*.sh; do
+  if [[ -f "$m" ]]; then
+    source "$m"
+  fi
+done
 
 zstyle ':completion:*' list-colors ''
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}

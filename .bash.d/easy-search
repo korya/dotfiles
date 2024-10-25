@@ -1,5 +1,10 @@
 ## Environment vars
 
+# XXX Does not support zsh yet
+if [[ -z "${BASH_VERSION}" ]]; then
+  return
+fi
+
 export EASEA_TEMP_FILE=`mktemp`
 # Remove the file on exit
 trap 'rm '"$EASEA_TEMP_FILE" 0

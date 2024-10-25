@@ -1,5 +1,9 @@
 # vim: set filetype=sh :
 
+if [[ -z "${BASH_VERSION}" ]]; then
+  return
+fi
+
 # 
 realias()
 {
