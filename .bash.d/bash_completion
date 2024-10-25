@@ -1,7 +1,10 @@
 # vim: set filetype=sh :
 
-complete -o filenames -F _longopt grepx grepm grepc
+if [[ -z "${BASH_VERSION}" ]]; then
+  return
+fi
 
+complete -o filenames -F _longopt grepx grepm grepc
 complete -c rwhich
 
 ### _ssh_umount()

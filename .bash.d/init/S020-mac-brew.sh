@@ -11,21 +11,21 @@ if [ -n "${HOMEBREW_PREFIX}" ]; then
   done
   
   # Add GNU curl to PATH
-  export PATH="$(brew --prefix curl)/bin:/usr/local/bin:${PATH}"
-  export MANPATH="$(brew --prefix curl)/share/man:${MANPATH}"
+  export PATH="${HOMEBREW_PREFIX}/opt/curl/bin:/usr/local/bin:${PATH}"
+  export MANPATH="${HOMEBREW_PREFIX}/opt/share/man:${MANPATH}"
 
   # Add GOPATH-based install location to PATH
   export PATH="${PATH}:${GOPATH:-${HOME}/go}/bin"
 
-  if [ -n "${HOMEBREW_PREFIX}" ]; then
-  # Add autocomplete
-  for f in "${HOMEBREW_PREFIX}/etc/bash_completion.d/"*; do
-    [[ -f "${f}" ]] && source "${f}"
-  done
-  if [[ -f "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]]; then
-    source "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
+  if [[ -n "${HOMEBREW_PREFIX}" ]] && [[ -n "${BASH_VERSION}" ]]; then
+    # Add autocomplete
+    if [[ -f "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]]; then
+      source "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
+    fi
+    for f in "${HOMEBREW_PREFIX}/etc/bash_completion.d/"*; do
+      [[ -f "${f}" ]] && source "${f}"
+    done
   fi
-fi
 fi
 
 # vim: ft=sh sw=2 et :

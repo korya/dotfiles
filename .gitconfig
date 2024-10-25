@@ -1,6 +1,6 @@
 [user]
 	name = korya
-	email = korya.github@gmail.com
+	email = 148461+korya@users.noreply.github.com
 	signingkey = 844EA3F966C652C5
 [diff]
 	tool = gvimdiff
@@ -21,7 +21,7 @@
 [gpg]
 	program = gpg
 [core]
-	editor = gvim
+	editor = gvim -f
 [pull]
 	rebase = true
 [init]
@@ -30,8 +30,8 @@
 	committerDateIsAuthorDate = true
 [fetch]
 	prune = true
-[alias]
-	rebase = rebase --committer-date-is-author-date --aqwe
+; [alias]
+; 	rebase = rebase --committer-date-is-author-date --aqwe
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f

@@ -240,6 +240,8 @@ Plug 'vim-syntastic/syntastic'
 " Plug 'w0rp/ale'
 Plug 'Valloric/YouCompleteMe', { 'do': './install.py  --clang-completer --gocode-completer --tern-completer --go-completer --js-completer --rust-completer' }
 
+Plug 'NoahTheDuke/vim-just'
+
 " Plug 'plasticboy/vim-markdown', { 'for': 'markdown' }
 " Plug 'elzr/vim-json', { 'for': 'json' }
 " Plug 'stephpy/vim-yaml', { 'for': 'yaml' }
