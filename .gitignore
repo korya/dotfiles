@@ -17,6 +17,8 @@
 .modular/
 .npm/
 .nvm/
+.pulumi/credentials.json
+.python_history
 .ssh/
 .viminfo
 .vscode/
@@ -26,6 +28,7 @@
 .zsh_sessions/
 .zim/
 dev/
+ai-dev/
 go/
 tmp/
 __pycache__/
@@ -41,3 +44,4 @@ Movies/
 Pictures/
 Public/
 .DS_Store
+.Trash/
