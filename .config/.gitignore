@@ -1,0 +1,6 @@
+# These folders contain mostly system-specific stuff:
+# credentials, versions, caches, etc.
+gcloud/
+github-copilot/
+iterm2/
+uv/
