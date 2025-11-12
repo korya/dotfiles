@@ -152,6 +152,23 @@ export LESS_TERMCAP_us=$'\e[01;36m'     # begin underline (cyan)
 # Fallback for BSD versions of ls
 export LSCOLORS="gxfxcxdxbxegedabagacad"
 
+
+## Configure history
+
+setopt APPEND_HISTORY         # Append to the history file, don't overwrite it
+setopt INC_APPEND_HISTORY     # Append commands to the history file immediately
+unsetopt SHARE_HISTORY        # Disable automatic importing of new commands from the history
+
+# Quality of life settings
+setopt HIST_IGNORE_DUPS       # Don't save duplicate commands
+setopt HIST_IGNORE_ALL_DUPS   # Remove the oldest duplicate upon inssert
+setopt HIST_FIND_NO_DUPS      # When searching history, don't display duplicate entries.
+setopt HIST_EXPIRE_DUPS_FIRST # Expire duplicate entries first when trimming history
+setopt EXTENDED_HISTORY       # Save timestamps with commands for better tracking
+
+
+## Source the .bash.d/ configuration
+
 # XXX Duplicated in Bash init scripts
 alias ls='ls --color=auto'
 alias grep='grep --colour=auto'
