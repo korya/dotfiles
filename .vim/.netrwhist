@@ -1,0 +1,5 @@
+let g:netrw_dirhistmax  =10
+let g:netrw_dirhistcnt =3
+let g:netrw_dirhist_3='/Users/dmitri/.claude/skills/repo-docs'
+let g:netrw_dirhist_2='/Users/dmitri/dev/frontcierge/docs'
+let g:netrw_dirhist_1='/Users/dmitri/dev/starboard'
