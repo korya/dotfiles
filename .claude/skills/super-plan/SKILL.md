@@ -1,0 +1,176 @@
+---
+name: super-plan
+description: Plan a non-trivial code change rigorously — understand the problem, form a hypothesis, validate assumptions through real experiments and doc/code reads, and cross-check the proposed solution against product specs, architecture, and the existing codebase before writing any plan. Use when the user says "/super-plan", "plan this thoroughly", "deep plan", "I want to be sure before we build this", or for any change where a wrong direction would burn meaningful time, tokens, or compute. Heavier and more deliberate than `/plan`; the goal is the global optimum, not a local one.
+---
+
+# Super Plan: thorough, validation-first planning
+
+The point of this skill is **not** to produce a longer plan. It is to refuse to commit to a plan until the assumptions underneath it have been tested against reality. A plan built on unverified assumptions is just a confident-looking bug report from the future.
+
+`/plan` says "here's how I'd build it." `/super-plan` says "here's how I'd build it, here's why each load-bearing assumption holds, and here's the evidence."
+
+## When to invoke
+
+- Non-trivial features or refactors where a wrong approach costs hours, not minutes
+- Cross-component changes (touches multiple of `agent/`, `portal/`, `marketing/`, `infra/`)
+- Anything that touches invariants: customer data isolation, org isolation, auth, billing, agent context injection
+- Anything depending on a third-party API or library behavior the agent has not personally verified
+- Anything where the user has expressed uncertainty ("I'm not sure if X is possible", "would this even work")
+- After a previous attempt failed — the cheap plan was wrong, time to do it properly
+
+Do **not** invoke for: typo fixes, single-file edits with obvious scope, mechanical rename/move tasks, or anything `/plan` (or no plan at all) handles fine. This skill is expensive on purpose; reserve it.
+
+## Operating principles
+
+- **Hypothesis-first.** Form a candidate solution early so validation has a target. Without a hypothesis, "research" wanders.
+- **Cheap experiments beat confident reasoning.** A 10-line script that proves an API behaves as expected is worth more than a paragraph asserting it does.
+- **Read the source on `HEAD`, not from memory.** Memory of a codebase decays; APIs change; specs evolve. Verify *now*.
+- **Inverted pyramid for the user.** Surface the headline (recommendation, blockers, open questions) first. Detail follows.
+- **Loop until convergent.** If validation invalidates the hypothesis, go back to step 1 with what you learned. Do not paper over a broken assumption.
+
+## Workflow
+
+### 1. Understand the problem
+
+Restate the problem in your own words. Identify:
+
+- **Goal** — what user-visible or system-level outcome is being asked for?
+- **Constraints** — deadlines, must-not-break invariants, scope limits, compatibility requirements
+- **Non-goals** — what is *explicitly* out of scope? (Reduces gold-plating later.)
+- **Success criteria** — how will we know the change works? What would prove it doesn't?
+
+If any of these are ambiguous or contradictory, **ask the user**. One clarifying question now beats a wasted plan later. Do not invent answers to plug holes.
+
+### 2. Form a hypothesis
+
+Propose a concrete candidate solution given current knowledge. It should be specific enough to be wrong:
+
+- The components/files that change, at the directory level
+- The data flow / control flow at a sketch level
+- The key APIs, libraries, or system behaviors it relies on
+- The 2-4 load-bearing assumptions ("this works *if* X behaves like Y")
+
+If you cannot articulate a hypothesis at all, the problem is not yet understood — go back to step 1.
+
+If multiple candidate approaches are plausible, note them and pick one to validate first based on simplicity, risk, or fit. The others are fallbacks if validation kills the primary.
+
+### 3. Enumerate load-bearing assumptions
+
+Write them down explicitly. An assumption is load-bearing if the plan **stops working** when the assumption is false. Examples:
+
+- "Library X exposes method Y that returns Z"
+- "The `customers` table has column `phone_e164` and it is unique per org"
+- "This endpoint is reachable from the agent server without new auth"
+- "The hatchet runner can hold this much state per task"
+
+For each assumption, classify:
+
+- **Verified** — already known true from reading current code/docs
+- **Plausible** — best-guess; needs cheap validation
+- **Risky** — the change pivots on this and a wrong answer kills the plan
+
+Risky and plausible assumptions go into step 4. Verified ones get a citation (file:line or doc reference) and move on.
+
+### 4. Validate assumptions
+
+For each unverified assumption, pick the cheapest validation that produces real evidence:
+
+| Assumption type | Validation |
+|---|---|
+| API behavior | Write a 10-30 line script, run it, capture the output. Or read the library source. |
+| Library capability | Read the library docs *and* the code; docs lie, code does not |
+| Internal code behavior | `grep` / `Read` the actual implementation on `HEAD`; do not trust memory |
+| Schema / data shape | Query the dev DB (read-only) or read the migration files |
+| System / infra behavior | Read the relevant config, IaC, or runtime docs; if cheap, run a probe |
+| Performance / scale | Back-of-envelope first; only benchmark if the math is too close to call |
+| External service | Read the vendor docs *and* check if there's already an integration in-repo to crib from |
+
+Record each result as **confirmed**, **refuted**, or **partial**. For refuted assumptions, return to step 2 with new information — do not patch around the refutation.
+
+For batched investigation (multiple parallel reads, broad searches), delegate to an Explore agent rather than draining the main context.
+
+### 5. Cross-validate with product specs
+
+Locate the specs touched by this change (e.g. `docs/product-spec/*.md`, plus any invariants doc the project maintains). For each:
+
+- Does the proposed solution **satisfy** the relevant requirements?
+- Does it **violate** any explicit invariant? (Customer data isolation, org isolation, RLS, auth boundaries, channel rules, billing semantics — these are the usual landmines.)
+- Are there **acceptance criteria** the plan does not yet address?
+- Is the change **mentioned** in the spec? If so, does our approach match the documented intent? If not, should the spec be updated as part of this work?
+
+If a violation is found, the plan is not yet ready. Either change the plan or — if the spec is wrong — flag it explicitly to the user as a spec change that needs review *before* code work begins.
+
+### 6. Cross-validate with architecture & conventions
+
+Check the proposed change against:
+
+- **High-level architecture** — does it respect component boundaries (agent vs. portal vs. marketing)? Does it route data through the documented seams, not around them?
+- **Component-level `AGENTS.md`** — language/style/test conventions, allowed dependencies, forbidden patterns
+- **Existing patterns** — is there already a way this kind of thing is done in the repo? Reuse beats invention.
+- **Security** — authn/authz at the right layer, no secret leakage, no new attack surface, input validation at boundaries
+- **Scalability & cost** — is the approach linear in the right dimension? Does it create N+1 queries, runaway fan-out, unbounded memory, or surprise cost?
+- **Observability** — can we tell when it breaks in prod? Logs, metrics, traces — does the plan include them where they're load-bearing?
+- **Background work** — anything async-and-retryable should run on Hatchet, not as fire-and-forget
+
+If the proposal conflicts with any of these, prefer adjusting the proposal over arguing with the architecture. If you genuinely think the architecture is wrong here, say so — but as a separate conversation, not a silent deviation.
+
+### 7. Cross-validate with the existing codebase
+
+Even after specs and architecture clear the proposal, the *code* may not. Verify:
+
+- Files the plan modifies actually exist and look the way the plan assumes
+- Functions/types the plan calls or extends have the signatures the plan expects
+- No in-flight work or recent commits already do (or block) what we're planning — `git log` the relevant area
+- Test infrastructure exists for the kind of test the plan will need
+- No "shadow" duplication: if similar logic exists elsewhere, the plan should consolidate, not branch
+
+This step often surfaces small surprises that quietly invalidate parts of the plan. Catch them now.
+
+### 8. Loop or commit
+
+After steps 4–7, one of three things is true:
+
+1. **Hypothesis survived all validation** → proceed to step 9
+2. **Hypothesis partially survived** → adjust the plan in-place; re-validate the changed parts; continue
+3. **Hypothesis broken** → go back to step 2 with what you learned. Do not bolt fixes onto a broken approach.
+
+Looping is normal and expected. The skill exists *because* first hypotheses are often wrong. A clean plan on the second or third iteration beats a brittle plan on the first.
+
+Cap iterations at ~3 before pulling the user in. If after 3 rounds no hypothesis survives, the problem itself likely needs reframing — surface that.
+
+### 9. Write the plan
+
+Structure (inverted pyramid):
+
+1. **Headline** — one sentence: what we're building and why this approach
+2. **Approach summary** — 3–6 bullets covering the shape of the change
+3. **Plan** — ordered, concrete steps with file paths and the specific changes per step
+4. **Assumptions validated** — bullet list with the evidence (file:line citation, experiment result, doc link)
+5. **Risks & mitigations** — what could still go wrong; what we'll do if it does
+6. **Out of scope** — what we're explicitly *not* doing, to prevent scope drift later
+7. **Open questions** — anything the user still needs to decide *before* implementation
+8. **Test plan** — unit, integration, e2e, manual — what each covers and which scenarios
+
+Keep the plan as long as it needs to be and no longer. A plan that nobody reads is worse than one that's slightly too short.
+
+### 10. Present and gate
+
+Show the plan. If there are open questions, ask them explicitly and wait. If the plan involves an architectural deviation, a spec change, or a risky migration, **do not start implementing in auto mode** — get explicit user approval first.
+
+If the plan is approved, implementation continues under normal rules (lint, test, commit hygiene, `/submit` for PRs).
+
+## Anti-patterns
+
+- **Skipping validation because "I'm pretty sure."** That's exactly when validation pays. Memory is wrong more often than agents like to admit.
+- **Validating only the easy assumptions.** The risky one is the one that needs the experiment. If validation feels uncomfortable, it's probably the right one.
+- **Confusing breadth for depth.** Reading 40 files shallowly is not validation. One careful read of the load-bearing function is.
+- **Writing the plan first, then justifying it.** The plan should fall out of the validation, not precede it.
+- **Looping forever.** Three iterations should converge or escalate. Indefinite refinement is a stall, not a plan.
+- **Producing a plan when the answer is "don't do this."** If validation reveals the change shouldn't ship, the deliverable is that conclusion — not a plan that ignores it.
+- **Cross-validation theatre.** Citing a spec without showing how the plan satisfies it. Name the requirement and the line of the plan that addresses it.
+
+## Relationship to other skills
+
+- `/plan` — lighter; use when assumptions are mostly known and the change is straightforward
+- `feedback_plan_validation_passes` — the three-pass validation discipline (assumption / spec+arch / edge-case) is roughly steps 4–7 here, applied at the end of *any* plan
+- `/submit` — for landing the change once the plan executes
