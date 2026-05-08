@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(ag:*)",
+      "Bash(ls:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:google.com)",
+      "Fetch",
+      "WebSearch"
+    ],
+    "defaultMode": "auto"
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-code-plugins": true,
+    "gopls-lsp@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "chrome-devtools-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "ChromeDevTools/chrome-devtools-mcp"
+      }
+    }
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "medium",
+  "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true,
+  "feedbackSurveyState": {
+    "lastShownTime": 1754013298930
+  }
+}
