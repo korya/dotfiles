@@ -169,6 +169,23 @@ See `templates/` in this skill directory for ready-to-fill skeletons. They embed
 - **Don't** put narrative or rationale in spec files. Each spec is a tight assertion. Rationale lives in architecture or PR descriptions.
 - **Don't** create files without confirming with the user when bootstrapping a new repo.
 
+## Definition of done
+
+The skill is complete when **all** of these are true. Each item is answerable with evidence — a file path, a grep result, a user confirmation — not a vibe.
+
+- [ ] Scope confirmed with the user *before* file creation: list of feature spec files, their prefixes, any unusual splits/combines.
+- [ ] Every file in the "Required content checklist" exists and ticks every box in its own checklist. Missing items get a TODO with a reason, not silent omission.
+- [ ] No spec describes implementation. Re-read each spec body: if it names a function, class, schema, or file, rewrite it behaviorally.
+- [ ] No spec carries a separate `**Testable:**` line. If the body isn't self-evidently testable, the body is rewritten — not annotated.
+- [ ] Every spec ID is unique within its file. Deletions leave holes; no renumbering.
+- [ ] Every invariant has an `INV-N` ID. Invariants live in `invariants.md`, not scattered into feature specs.
+- [ ] Cross-links resolve: `AGENTS.md` indexes every file under `docs/`; `docs/product-specs/README.md` indexes every feature spec; every `see INV-N` / `see XXX-N` reference points to something that exists.
+- [ ] Sizes within budget: `AGENTS.md` ~150 lines, each feature spec 5–15 items at 1–3 sentences, architecture 1–3 pages. Over-budget files are split or trimmed.
+- [ ] If the repo already had docs in this pattern, only the requested files were touched — no silent rewrites of existing structure.
+- [ ] User has been shown the final layout and asked to confirm before the skill closes.
+
+If a checkbox cannot be ticked honestly, the skill is not done — return to the step that produces it.
+
 ## Concise > comprehensive
 
 The whole point of this layout is that an agent (or human) can quickly find the doc that answers their question. Long docs defeat that purpose. Aim for:

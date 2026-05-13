@@ -159,6 +159,22 @@ Show the plan. If there are open questions, ask them explicitly and wait. If the
 
 If the plan is approved, implementation continues under normal rules (lint, test, commit hygiene, `/submit` for PRs).
 
+## Anti-rationalization table
+
+When tempted to skip or shortcut a step, check whether your reasoning appears below. If it does, the answer is: do the step.
+
+| Rationalization | Why it fails here |
+|---|---|
+| "I already know how this library/API works." | Memory of third-party APIs decays; versions drift. Cost to confirm: minutes. Cost of being wrong: hours. Verify on the version actually in use. |
+| "This change is small enough to skip validation." | If it were that small, the user would have invoked `/plan`, not `/super-plan`. The invocation itself is the signal that validation is required. |
+| "The user is waiting — just commit to the hypothesis." | A wrong plan costs more wall-clock than a slow one. The whole reason this skill exists is to front-load the failure. |
+| "I'll validate the risky assumption while implementing." | Validation discovered mid-implementation means rework, lost commits, and (worse) silent papering-over. Validate first. |
+| "Reading the source is overkill — the docs say X." | Docs lie, code does not. For any load-bearing assumption, read the implementation. |
+| "Three iterations is taking too long, let me just ship plan v3." | Three failed iterations means the problem needs reframing, not that the plan is ready. Surface to the user. |
+| "There's no spec for this area, so cross-validation doesn't apply." | Absence of a spec is itself a signal — either propose one or flag that this work creates undocumented behavior. Don't silently skip. |
+| "The proposed approach matches an existing pattern, so it must be fine." | Patterns get cargo-culted. Confirm the pattern still applies to *this* problem before reusing it. |
+| "I'll just batch the validations in my head as I write the plan." | If they're not written down with evidence, they're not validated — they're just asserted in a more confident tone. |
+
 ## Anti-patterns
 
 - **Skipping validation because "I'm pretty sure."** That's exactly when validation pays. Memory is wrong more often than agents like to admit.
@@ -168,6 +184,22 @@ If the plan is approved, implementation continues under normal rules (lint, test
 - **Looping forever.** Three iterations should converge or escalate. Indefinite refinement is a stall, not a plan.
 - **Producing a plan when the answer is "don't do this."** If validation reveals the change shouldn't ship, the deliverable is that conclusion — not a plan that ignores it.
 - **Cross-validation theatre.** Citing a spec without showing how the plan satisfies it. Name the requirement and the line of the plan that addresses it.
+
+## Definition of done
+
+The skill is complete when **all** of these are true. Each item should be answerable with evidence, not a vibe.
+
+- [ ] Problem statement (goal / constraints / non-goals / success criteria) restated; ambiguities resolved with the user, not invented.
+- [ ] Hypothesis stated specifically enough to be falsifiable (named files, named APIs, named flows).
+- [ ] Every load-bearing assumption carries an evidence tag — a `file:line` citation, a quoted doc passage, a script's output, or a query result. No bare `[plausible]` or `[unverified]` tags survive into the final plan.
+- [ ] Spec cross-validation: each affected requirement is named, and the plan line that satisfies it is named. Invariants explicitly checked (or a documented deviation flagged for user sign-off).
+- [ ] Architecture & conventions cross-validation: any deviation is called out, not silent.
+- [ ] Codebase cross-validation: files the plan touches were read on `HEAD`; signatures match; no in-flight work conflicts.
+- [ ] Plan document contains: headline, approach, ordered steps with file paths, validated assumptions with evidence, risks & mitigations, out-of-scope, open questions, test plan.
+- [ ] Open questions surfaced to the user. None silently answered.
+- [ ] If validation killed the hypothesis: the deliverable is the negative result and the reframing, not a salvaged plan.
+
+If a checkbox cannot be ticked honestly, the skill is not done — return to the step that produces it.
 
 ## Relationship to other skills
 
