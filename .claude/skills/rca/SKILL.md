@@ -64,24 +64,33 @@ If the bug pre-dates any plausible change, the cause is likely a latent conditio
 
 ### 3. Run the 5-whys chain
 
-Start from the symptom. At each step, the answer becomes the next "why."
+Start from the symptom. At each step, the answer becomes the next "why." Record the chain as a **numbered list**, with each item carrying the same three fields — narrative prose makes it easy to chain unverified claims fluently; explicit per-item fields force evidence per link.
 
-> *Why* did the request return 500?
-> Because the `customers` query returned 0 rows for an authenticated user.
-> *Why* did it return 0 rows?
-> Because the WHERE clause filters on `org_id`, and the user's `org_id` was null.
-> *Why* was `org_id` null?
-> Because the signup flow doesn't backfill `org_id` for users created via the magic-link path.
-> *Why* doesn't it backfill?
-> Because the org-assignment hook is wired to the password-signup path only.
-> *Why* is it wired only there?
-> Because magic-link signup was added later and the author didn't know the hook existed — there was no contract documenting it.
+1. **Why did the request return 500?**
+   - **Answer:** The `customers` query returned 0 rows for an authenticated user.
+   - **Evidence:** `api/customers.ts:42` — `if (rows.length === 0) throw 500`; log `req-id=abc123` shows empty result set.
+
+2. **Why did it return 0 rows?**
+   - **Answer:** The WHERE clause filters on `org_id`, and the user's `org_id` was `null`.
+   - **Evidence:** `api/customers.ts:38` query; `psql> SELECT org_id FROM users WHERE id='…'` → `null`.
+
+3. **Why was `org_id` null?**
+   - **Answer:** The signup flow doesn't backfill `org_id` for users created via the magic-link path.
+   - **Evidence:** `auth/magic-link.ts:71-95` — no call to `assignOrg()`; cf. `auth/password.ts:60` which does call it.
+
+4. **Why doesn't it backfill?**
+   - **Answer:** The org-assignment hook is wired to the password-signup path only.
+   - **Evidence:** `auth/hooks.ts:12` registers only `on('password-signup', …)`.
+
+5. **Why is it wired only there?**
+   - **Answer:** Magic-link signup was added later (commit `a1b2c3d`) and the author didn't know the hook existed — no contract documented it.
+   - **Evidence:** `git log -S "magic-link" auth/`; `docs/auth.md` has no mention of the hook contract.
 
 Rules:
 
 - **Each why is mechanical, not narrative.** Don't jump three layers. One step at a time.
 - **Stop when the answer is "and a fix here prevents siblings."** Above that level you're fixing symptoms; below that level you're philosophising ("because software is hard").
-- **Verify each link.** A 5-whys chain that's never tested against code is fan-fiction. Confirm each step against the actual implementation, log, or query.
+- **Evidence is mandatory, per link.** Each row's Evidence cell must cite a `file:line`, query result, log excerpt, or commit SHA. A blank or hand-wavy cell ("looks like…", "probably because…", "the author must have…") is *itself a finding* — mark the row `UNVERIFIED`, and either go get the evidence or stop the chain there. An unverified link cannot support the links below it.
 - **Branch if needed.** Some failures have multiple parallel causes; run a chain per branch.
 
 ### 4. Distinguish symptom / proximate cause / root cause
@@ -95,6 +104,14 @@ Restate the chain, labelling:
 A fix at the proximate cause stops *this* failure. A fix at the root cause stops the *class*.
 
 Both are legitimate — but the user should choose with eyes open. Present both options.
+
+**Then falsify the root cause.** Per-link evidence proves each step; it does *not* prove the synthesis ("therefore X is the root cause"). A chain can be link-by-link verified and still synthesise to the wrong root — e.g. you found a real defect, but not the one that produced this symptom. Write down:
+
+- **What would we see** (in logs, repro, data) if X were *not* the actual root cause?
+- **Is there a second mechanism** that could produce the same symptom without going through X? If yes, what distinguishes which one fired here?
+- **Cheapest disconfirming experiment** available?
+
+If a cheap disconfirming experiment exists, run it. If not, surface the falsifier as a known limitation — "we believe X is the root cause; we have not ruled out Y." A hypothesis you can't even imagine disproving is religion, not analysis.
 
 ### 5. Sibling-impact sweep
 
@@ -112,6 +129,32 @@ git log -S"<distinctive token>"
 
 Found siblings get reported alongside the primary. A "root cause" with zero siblings is suspicious — re-examine whether you stopped at a proximate cause.
 
+### 5.5. List and validate load-bearing assumptions
+
+Before proposing any fix, write down the assumptions the root-cause hypothesis and the eventual fix rest on, as a **numbered list** with the same three fields per item. Validating-as-you-go produces a list of "things that happen to be true" — listing first, then validating, surfaces the assumptions you actually depend on.
+
+1. **Assumption:** `assignOrg()` is the *only* mechanism that sets `org_id`.
+   - **How validated:** `grep -rn "org_id\s*=" .` — only `assignOrg()` and the seed script write it.
+   - **Result:** Confirmed.
+
+2. **Assumption:** All magic-link users have `org_id = null` (not just the reported one).
+   - **How validated:** `psql> SELECT count(*) FROM users WHERE signup_method='magic_link' AND org_id IS NULL` → 1,247.
+   - **Result:** Confirmed; sibling impact is large.
+
+3. **Assumption:** Adding `assignOrg()` to the magic-link path won't double-assign for users who already have an org.
+   - **How validated:** Read `assignOrg()`: idempotent — early-returns when `org_id` is already set.
+   - **Result:** Confirmed.
+
+4. **Assumption:** The hook contract is the right enforcement layer (vs. a DB constraint).
+   - **How validated:** —
+   - **Result:** UNVERIFIED — surface as open question.
+
+Rules:
+
+- **List the assumption *before* you validate it.** Otherwise you list what you happened to check, not what you actually depend on.
+- **An unvalidated assumption is a load-bearing guess.** If you can't validate one cheaply, that *is* the finding — surface it as an open question rather than quietly proceeding.
+- **The fix may only depend on validated assumptions.** If the proposed fix needs an `UNVERIFIED` assumption to be true, it's a hypothesis dressed as a fix — say so explicitly when proposing it.
+
 ### 6. Propose the fix(es)
 
 Two distinct proposals, separated:
@@ -122,6 +165,22 @@ Two distinct proposals, separated:
 For each: files, approach, test coverage, blast radius, rollback story.
 
 Recommend one. The recommendation depends on urgency, risk, and whether the symptom fix would mask the cause from future detection.
+
+### 6.5. Counterfactual: would the fix have prevented the captured repro?
+
+Close the loop between cause and fix. For each proposed fix (especially the root-cause one — the symptom fix is trivially counterfactual-true by construction), walk it through the captured failure and answer:
+
+- **If this fix had been in place when the failure was captured, would the repro still fire?**
+- **Which link in the 5-whys chain does the fix break?** If the answer is "link 2" but you claimed the root cause is at link 5, the fix is too shallow — name what it doesn't prevent.
+- **Does the fix address the captured failure**, or only a related failure that shares the same root cause?
+
+Land on one of:
+
+- **Confirmed** — repro would not fire under the fix; name the link it breaks.
+- **Confirmed for this case, but a sibling path remains** — fix stops the captured repro but not all manifestations from the same root. List the survivors (and consider whether the fix is wide enough).
+- **Unconfirmed** — the fix addresses a real defect but it's not clear it addresses *this* failure. **Stop.** Either the chain points at the wrong cause or the fix targets the wrong layer; revisit before recommending.
+
+A fix that can't survive its own counterfactual is a hypothesis dressed as a fix. Say so when proposing it, or pick a different fix.
 
 ### 7. Prevent the class
 
@@ -179,10 +238,12 @@ The RCA is complete when **all** of these are true. Each item is answerable with
 - [ ] Failure captured: symptom, scope, expected vs. actual, time window — all written down.
 - [ ] Repro or trace established; if neither, the *finding* is "we need instrumentation" and the RCA is paused, not faked.
 - [ ] Timeline reconstructed: the change(s) plausibly responsible are named, with commits / deploys / config flips cited.
-- [ ] 5-whys chain written out, each link verified against actual code / logs / data (not memory).
-- [ ] Symptom / proximate cause / root cause explicitly labelled and distinguished.
-- [ ] Sibling sweep performed; either siblings are listed, or the absence is justified.
+- [ ] 5-whys chain produced as a numbered list; **every item has a populated Answer and Evidence field** (file:line, query result, log excerpt, or commit SHA). Any `UNVERIFIED` link is explicitly flagged, and no link below an `UNVERIFIED` one is treated as proven.
+- [ ] Symptom / proximate cause / root cause explicitly labelled and distinguished — **and** the root cause is falsified: what observation would disprove it is written down, or the absence of a cheap falsifier is itself surfaced as a limitation.
+- [ ] Sibling sweep performed; either siblings are listed, or the absence is justified — "no siblings" alone is not enough.
+- [ ] Load-bearing assumptions enumerated as a numbered list with populated **How validated** and **Result** for each. Any `UNVERIFIED` assumption is surfaced as an open question; the recommended fix does **not** silently depend on one.
 - [ ] Two fix proposals presented (symptom-level and root-cause-level), with a recommendation and a reason.
+- [ ] Counterfactual check performed on the recommended fix; result is recorded as **Confirmed**, **Confirmed-with-survivors** (survivors listed), or **Unconfirmed** — and **Unconfirmed means the RCA is not done**.
 - [ ] Prevention proposed: at minimum a test; ideally a guardrail or doc that prevents the *class*.
 - [ ] Report delivered inverted-pyramid, with open questions surfaced (not silently answered).
 - [ ] No "human error" conclusions. No findings that name a person rather than a system.
