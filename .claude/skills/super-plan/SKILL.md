@@ -54,6 +54,14 @@ If you cannot articulate a hypothesis at all, the problem is not yet understood 
 
 If multiple candidate approaches are plausible, note them and pick one to validate first based on simplicity, risk, or fit. The others are fallbacks if validation kills the primary.
 
+**Then write down what would prove the hypothesis itself wrong** — not its individual assumptions (those come in step 3), but the *shape* of the solution. Examples:
+
+- "If reads dominate writes by 100×, a read-through cache is the wrong shape — a write-aside would be."
+- "If library X requires a long-lived TCP connection, treating it as a stateless RPC is the wrong shape."
+- "If the failure happens before request routing, anything I add in the handler is the wrong shape."
+
+A hypothesis you can't even imagine disproving isn't a hypothesis — it's a vibe with file paths. If you can't write the falsifier, the hypothesis isn't specific enough; sharpen it. Carry the falsifier into step 4 and test it alongside the assumptions.
+
 ### 3. Enumerate load-bearing assumptions
 
 Write them down explicitly. An assumption is load-bearing if the plan **stops working** when the assumption is false. Examples:
@@ -102,29 +110,52 @@ If a violation is found, the plan is not yet ready. Either change the plan or �
 
 ### 6. Cross-validate with architecture & conventions
 
-Check the proposed change against:
+Two failure modes this step catches: a plan that fights the architecture, and a plan that uses defaults from your training data instead of the project's actual conventions ("pnpm" when the repo uses yarn, "localhost:3000" when the API is on :9100, "param-style DI" when the codebase uses `vi.mock`). The second is by far the more common — and the more embarrassing, because it requires zero new thinking, just reading.
+
+**6a. Architecture.** Check the proposed change against:
 
 - **High-level architecture** — does it respect component boundaries (agent vs. portal vs. marketing)? Does it route data through the documented seams, not around them?
-- **Component-level `AGENTS.md`** — language/style/test conventions, allowed dependencies, forbidden patterns
-- **Existing patterns** — is there already a way this kind of thing is done in the repo? Reuse beats invention.
-- **Security** — authn/authz at the right layer, no secret leakage, no new attack surface, input validation at boundaries
+- **Security** — authn/authz at the right layer, no secret leakage, no new attack surface, input validation at boundaries.
 - **Scalability & cost** — is the approach linear in the right dimension? Does it create N+1 queries, runaway fan-out, unbounded memory, or surprise cost?
 - **Observability** — can we tell when it breaks in prod? Logs, metrics, traces — does the plan include them where they're load-bearing?
-- **Background work** — anything async-and-retryable should run on Hatchet, not as fire-and-forget
+- **Background work** — anything async-and-retryable should run on Hatchet (or the project's equivalent), not as fire-and-forget.
 
-If the proposal conflicts with any of these, prefer adjusting the proposal over arguing with the architecture. If you genuinely think the architecture is wrong here, say so — but as a separate conversation, not a silent deviation.
+**6b. Project conventions — read, enumerate, cite, and link to plan lines.** This is a discipline check, not a judgment call. You **must produce evidence** that you read the project's conventions docs on `HEAD`, not relied on memory or sensible defaults.
 
-### 7. Cross-validate with the existing codebase
+For each row below, name the file/section you consulted and the convention you found. If a row doesn't apply (e.g. the project has no schema migrations), say so explicitly — silent omission is the failure mode. Categories are universal; the *paths* are project-specific and must be discovered from the repo, not assumed.
 
-Even after specs and architecture clear the proposal, the *code* may not. Verify:
+| What to check | Where it lives (varies by project) | What to record |
+|---|---|---|
+| Root project conventions | `AGENTS.md` / `CLAUDE.md` / `README.md` at the repo root | One-line summary + the rules the plan touches |
+| Per-component conventions | `<component>/AGENTS.md` (or equivalent) for every component the plan modifies | Local commands, code style, allowed/forbidden patterns |
+| Package manager | Conventions doc, `package.json`, lockfile (or `Cargo.lock` / `uv.lock` / …) | `yarn` / `pnpm` / `npm` / `cargo` / `uv` — verify against the lockfile; do not default |
+| Build / test / run entry points | The project's task runner — `justfile`, `Makefile`, package scripts, `cargo` aliases, etc. | The recipes the conventions doc names as canonical (do not infer from `package.json` scripts unless that *is* the documented convention) |
+| Test framework + mocking policy | Conventions doc, sibling tests, framework config | Framework name, file-location convention (co-located vs `__tests__`), mocking style (module mocks vs param DI), coverage threshold |
+| Lint / format | Conventions doc, tool config files | Tool name (biome / eslint / ruff / rustfmt / …), per-language rules |
+| Migration / schema-change tooling (only if the plan touches schema) | Conventions doc, `migrations/` or equivalent | The exact command to scaffold a migration |
+| Ports, URLs, environment | Root conventions doc | Local dev ports/URLs — don't guess at defaults |
+| Long-running / async machinery (only if the plan touches it) | Conventions doc | Which platform handles retryable work; boundary rules |
+| Existing patterns to reuse | Sibling files in the same directory | If a pattern already exists, reuse beats invention |
+| Anything else the conventions doc flags | The conventions doc itself | Catch-all for project-specific rules not covered above |
 
-- Files the plan modifies actually exist and look the way the plan assumes
-- Functions/types the plan calls or extends have the signatures the plan expects
-- No in-flight work or recent commits already do (or block) what we're planning — `git log` the relevant area
-- Test infrastructure exists for the kind of test the plan will need
-- No "shadow" duplication: if similar logic exists elsewhere, the plan should consolidate, not branch
+**The output of this step is a bullet list inside the plan under "Project conventions to follow."** Each bullet has two parts, in this exact shape:
 
-This step often surfaces small surprises that quietly invalidate parts of the plan. Catch them now.
+> - **[`file:line`]** Convention: *what the doc says.* → **Reflected in plan:** *which plan step(s) follow it, and how.*
+
+If a convention doesn't constrain this particular plan, the right-hand side reads `Doesn't constrain this plan` plus a one-line reason. "Doesn't constrain" is a claim — defend it briefly. Silent omission is the failure mode the format exists to prevent.
+
+If the proposal conflicts with any of these, prefer adjusting the proposal over arguing with the convention. If you genuinely think the convention is wrong here, say so — but as a separate conversation, not a silent deviation.
+
+### 7. Sweep the codebase for hidden conflicts
+
+Specs and architecture clearing the proposal doesn't mean the *codebase* will. File-existence and signature checks for files the plan touches belong in step 3 as load-bearing assumptions (e.g. *"`apps/web/src/foo.ts` exports `bar(x: X): Y`"*) and get validated in step 4. This step is for *systemic* surprises that wouldn't naturally appear as bullet assumptions:
+
+- **In-flight work or recent commits** in the touched area — `git log` it. Someone else may already be doing this, or just blocked it.
+- **Shadow duplication** — similar logic elsewhere in the repo that the plan should consolidate with, not branch from.
+- **Caller-side drift** — if the plan changes a signature, contract, schema, or invariant, what *else* in the repo depends on the current shape? Grep for callers, schemas, fixtures, mocks.
+- **Test infrastructure gaps** — does the layer of test the plan needs (unit / integration / e2e) actually exist for this area, or does the plan need to bring it up?
+
+This step catches the surprises that aren't part of any single assumption but invalidate the plan in aggregate.
 
 ### 8. Loop or commit
 
@@ -137,6 +168,16 @@ After steps 4–7, one of three things is true:
 Looping is normal and expected. The skill exists *because* first hypotheses are often wrong. A clean plan on the second or third iteration beats a brittle plan on the first.
 
 Cap iterations at ~3 before pulling the user in. If after 3 rounds no hypothesis survives, the problem itself likely needs reframing — surface that.
+
+### 8.5. Counterfactual: does the plan satisfy the success criteria?
+
+Close the loop between the goal (step 1) and the plan about to be written. For each success criterion stated in step 1, name the plan step(s) that satisfy it. Land on one of:
+
+- **Confirmed** — every criterion is satisfied by at least one plan step; cite which.
+- **Confirmed with gaps** — some criteria need follow-up work or out-of-band steps; list them and surface as open questions or out-of-scope.
+- **Unconfirmed** — at least one criterion has no plan step that satisfies it. **Stop.** Either extend the plan or explicitly descope the criterion with the user's agreement.
+
+A plan whose own success criteria don't all map to plan steps is a list of activities, not a plan.
 
 ### 9. Write the plan
 
@@ -174,6 +215,7 @@ When tempted to skip or shortcut a step, check whether your reasoning appears be
 | "There's no spec for this area, so cross-validation doesn't apply." | Absence of a spec is itself a signal — either propose one or flag that this work creates undocumented behavior. Don't silently skip. |
 | "The proposed approach matches an existing pattern, so it must be fine." | Patterns get cargo-culted. Confirm the pattern still applies to *this* problem before reusing it. |
 | "I'll just batch the validations in my head as I write the plan." | If they're not written down with evidence, they're not validated — they're just asserted in a more confident tone. |
+| "TS monorepos usually use pnpm / Node servers usually run on :3000 / projects usually mock with `jest.mock`." | Defaults from training data are the most dangerous failure mode in convention-checking, because they feel right and require no work to invoke. Verify on the repo, not on the population. Pull the actual command, port, framework name from `AGENTS.md` or the relevant docs/ file. |
 
 ## Anti-patterns
 
@@ -190,11 +232,13 @@ When tempted to skip or shortcut a step, check whether your reasoning appears be
 The skill is complete when **all** of these are true. Each item should be answerable with evidence, not a vibe.
 
 - [ ] Problem statement (goal / constraints / non-goals / success criteria) restated; ambiguities resolved with the user, not invented.
-- [ ] Hypothesis stated specifically enough to be falsifiable (named files, named APIs, named flows).
+- [ ] Hypothesis stated specifically enough to be falsifiable (named files, named APIs, named flows) **and** a disconfirming observation is written down — what would prove the hypothesis itself wrong, not just its individual assumptions.
 - [ ] Every load-bearing assumption carries an evidence tag — a `file:line` citation, a quoted doc passage, a script's output, or a query result. No bare `[plausible]` or `[unverified]` tags survive into the final plan.
 - [ ] Spec cross-validation: each affected requirement is named, and the plan line that satisfies it is named. Invariants explicitly checked (or a documented deviation flagged for user sign-off).
-- [ ] Architecture & conventions cross-validation: any deviation is called out, not silent.
-- [ ] Codebase cross-validation: files the plan touches were read on `HEAD`; signatures match; no in-flight work conflicts.
+- [ ] Architecture cross-validation: any deviation is called out, not silent.
+- [ ] Project-conventions cross-validation: each universal category (root + per-component conventions, package manager, build/test/run entry points, test framework + mocking policy, lint/format, migration tooling if schema is touched, ports/URLs, async machinery if relevant, reuse patterns) enumerated with `file:line` citations inside the plan, **and each bullet links to the plan step it shapes** (or is marked `Doesn't constrain this plan` with a reason). No defaults from training data — yours or the population's — sneaking in.
+- [ ] Codebase conflict sweep performed: in-flight work, shadow duplication, caller-side drift (if signatures/schemas change), and test-infrastructure gaps all checked, with any findings reflected in the plan. (File-existence and signature checks live in the assumption list, not here.)
+- [ ] Plan-vs-success-criteria counterfactual recorded as **Confirmed**, **Confirmed-with-gaps** (gaps listed), or **Unconfirmed** — and **Unconfirmed means the plan is not ready**.
 - [ ] Plan document contains: headline, approach, ordered steps with file paths, validated assumptions with evidence, risks & mitigations, out-of-scope, open questions, test plan.
 - [ ] Open questions surfaced to the user. None silently answered.
 - [ ] If validation killed the hypothesis: the deliverable is the negative result and the reframing, not a salvaged plan.
