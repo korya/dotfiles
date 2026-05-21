@@ -148,6 +148,23 @@ Summarize for the user, inverted-pyramid:
 - Any spec or invariant deviations resolved, with the resolution
 - Anything the user should still verify manually
 
+## Anti-rationalization table
+
+When tempted to skip a step, check whether your reasoning appears below. If it does, the answer is: do the step.
+
+| Rationalization | Why it fails here |
+|---|---|
+| "Conflicts resolved cleanly — ship it." | Conflict markers are the visible 10%; semantic drift is the invisible 90%. A clean text merge can still violate an invariant `delta` added. |
+| "The tests passed after the rebase, so it's fine." | The tests cover what was true on `old_base`. If `delta` added new surface (new caller, new channel, new spec), the suite may not cover it yet. |
+| "Git accepted the replay, so the commits must still be correct." | Git replays text. It does not check that the *solution* still matches the *problem*. Re-read the spec on `new_base`. |
+| "`delta` didn't touch the files `curr` changes — no cross-impact." | File-level untouched ≠ semantically untouched. A renamed helper, a new invariant, a tightened type — all can invalidate `curr` without touching its files. |
+| "The original spec still applies." | Re-read it on `new_base`. Specs evolve in `delta` more often than agents assume; "still applies" should be a finding, not an assumption. |
+| "`-X theirs` / `-X ours` will clear this conflict fast." | These options hide semantic divergence in a hunk-shaped blindspot. Resolve by reading both sides. |
+| "This commit looks redundant — I'll drop it silently." | Dropping a commit is a user-visible scope decision. Surface it, get the nod, then drop. |
+| "I'll bundle the rebase-fix into the original commit." | If the fix is preserving the original intent, bundle. If it's a *new* bug fix you discovered during rebase, split — per the project's split-move-and-fix rule. |
+| "Lint/tests aren't needed; rebase didn't touch logic." | Rebase always touches logic — replaying a change against new code *is* a logic change. Run them. |
+| "Three iterations of conflict resolution is enough — push it." | If you've fought the same hunk three times, the approach itself is probably wrong on `new_base`. Stop and reframe with the user. |
+
 ## Anti-patterns
 
 - **Treating rebase as a merge-conflict exercise.** Conflict markers are the visible 10%; semantic drift is the invisible 90%.
@@ -155,3 +172,20 @@ Summarize for the user, inverted-pyramid:
 - **Bundling rebase fixes into the original commit when they're really new bug fixes.** Split them.
 - **Skipping lint/tests "because rebase didn't touch logic."** Rebase always touches logic — that's the whole point of this skill.
 - **Forcing through a Conflicting classification without surfacing it.** Stop and talk to the user.
+
+## Definition of done
+
+The rebase is complete when **all** of these are true. Each item is answerable with evidence, not a vibe.
+
+- [ ] Three points (`curr`, `old_base`, `new_base`) stated back to the user; `old_base != new_base` confirmed.
+- [ ] Every commit on `curr` carries a classification (Untouched / Adjusted / Extended / Obsolete / Conflicting) with a one-line justification.
+- [ ] Any **Conflicting** or **Obsolete** classification has been surfaced to the user and resolved — not silently dropped or force-resolved.
+- [ ] Specs, invariants, and architecture docs were re-read on `new_base` (not from memory of `old_base`).
+- [ ] Each "replay-with-edits" or "new-commit" landed as a discrete, lint-clean, test-clean commit; no `--no-verify`.
+- [ ] No `-X theirs` / `-X ours` was used to clear a conflict the agent didn't read both sides of.
+- [ ] Full lint + unit test pass on affected components. Risky commits also got an e2e check (or an explicit user-deferred note).
+- [ ] Original acceptance criteria (PR description, spec, ticket) restated and confirmed still met on the rebased branch.
+- [ ] Regression surface in `delta`-touched code that `curr` did *not* touch was sanity-checked; "nothing broken there" is a finding, not an assumption.
+- [ ] Final report delivered inverted-pyramid: headline, per-commit outcome, deviations, manual-verify list.
+
+If a checkbox cannot be ticked honestly, the rebase is not done — return to the step that produces it.
