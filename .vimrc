@@ -275,7 +275,9 @@ Plug 'github/copilot.vim'
 call plug#end()
 " }}}
 
-colorscheme solarized
+" silent! so the very first launch (before plugins are installed) doesn't error
+" out with E185 and block on a 'Press ENTER' prompt during headless PlugInstall.
+silent! colorscheme solarized
 set background=dark
 
 " PLUGIN: ctrl-p {{{
