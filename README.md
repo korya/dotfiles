@@ -1,10 +1,11 @@
-Install the dotfiles
+# dotfiles
+
+Install the dotfiles — turns `$HOME` into this repo, backing up any files
+macOS pre-seeded (`.zshrc`, `.zprofile`, …) instead of forcing a manual merge:
 
 ```sh
-cd ~
-git init .
-git remote add origin https://github.com/korya/dotfiles
-git pull origin master
+bash <(curl -fsSL https://raw.githubusercontent.com/korya/dotfiles/master/.korya.d/install-dotfiles.sh)
 ```
 
-Note: unfortunately, all conflicts need to be resolved manually.
+Pre-existing files are moved to `~/.dotfiles-backup-<timestamp>/`. The script is
+idempotent: re-running just fast-forwards the repo.

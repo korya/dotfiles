@@ -1,0 +1,86 @@
+# Brewfile — install everything with `brew bundle --file ~/Brewfile`.
+# Idempotent and re-runnable: existing packages are skipped.
+
+# ----------------------------------------------------------------------------
+# GNU coreutils & friends — replace the ancient BSD tools macOS ships with the
+# GNU versions the rest of the world (and most scripts) assume.
+# ----------------------------------------------------------------------------
+brew "coreutils"      # ls, cat, cp, ... (GNU); installs g-prefixed binaries
+brew "binutils"       # ld, objdump, nm, strings, ...
+brew "diffutils"      # GNU diff/cmp
+brew "findutils"      # GNU find/xargs/locate
+brew "gawk"           # GNU awk
+brew "gnu-indent"     # C source code formatter (`gindent`)
+brew "gnu-sed"        # GNU sed (`gsed`) — supports -i without an arg, etc.
+brew "gnu-tar"        # GNU tar (`gtar`)
+brew "gnu-which"      # GNU which
+brew "gnutls"         # TLS library + certtool
+brew "grep"           # GNU grep (`ggrep`) — PCRE, --color, etc.
+brew "gzip"
+brew "ed"             # the classic line editor (macOS ships an old one)
+brew "moreutils"      # handy extras: sponge, ts, vidir, parallel, ...
+brew "gpatch"         # GNU patch
+brew "m4"             # macro processor (autotools dependency)
+brew "make"           # GNU make (macOS's is years behind)
+brew "cmake"
+brew "file-formula"   # `file` — type detection (formula renamed to avoid clash)
+brew "wdiff"          # word-by-word diff
+
+# ----------------------------------------------------------------------------
+# Shell & core CLI
+# ----------------------------------------------------------------------------
+brew "bash"               # modern bash 5+ (macOS is stuck on 3.2 for licensing)
+brew "bash-completion@2"  # programmable completion for bash 4+
+brew "less"
+brew "wget"
+brew "curl"
+brew "socat"          # multipurpose socket relay — netcat on steroids
+brew "git"
+brew "openssh"
+brew "python"
+brew "rsync"
+brew "svn"            # subversion — still needed by some brew casks/legacy repos
+brew "unzip"
+brew "tree"
+brew "rename"         # Perl-based bulk file renamer
+brew "watch"          # re-run a command periodically, full-screen
+
+# ----------------------------------------------------------------------------
+# Crypto / security
+# ----------------------------------------------------------------------------
+brew "gpg2"           # GnuPG — referenced by ~/.gitconfig for commit signing
+
+# ----------------------------------------------------------------------------
+# Productivity / modern CLI
+# ----------------------------------------------------------------------------
+brew "jq"             # command-line JSON processor
+brew "just"           # command runner — a saner `make` for project tasks
+brew "ag"             # the_silver_searcher — fast recursive code grep
+brew "fzf"            # fuzzy finder (Ctrl-R / Ctrl-T); run its install once
+brew "zellij"         # terminal multiplexer (a friendlier tmux)
+brew "gh"             # GitHub CLI — also used to upload the SSH key
+brew "bat"            # `cat` with syntax highlighting + git integration
+brew "dockutil"       # script the macOS Dock contents (used by macos.sh)
+brew "docker-credential-helper"  # stores Docker registry creds in the keychain
+
+# ----------------------------------------------------------------------------
+# Editors
+# ----------------------------------------------------------------------------
+brew "macvim"         # Vim w/ GUI — provides `gvim`, used as git's editor/difftool
+brew "nvim"           # Neovim
+
+# ----------------------------------------------------------------------------
+# GUI apps (casks)
+# ----------------------------------------------------------------------------
+cask "iterm2"
+cask "docker"                 # Docker Desktop
+cask "visual-studio-code"
+cask "cursor"                 # AI-integrated VS Code fork
+cask "windsurf"               # AI-integrated editor
+cask "bitwarden"              # password manager
+cask "tailscale"              # WireGuard-based mesh VPN
+
+# ----------------------------------------------------------------------------
+# Fonts
+# ----------------------------------------------------------------------------
+cask "font-hack-nerd-font"    # patched Hack font w/ glyphs for the p10k prompt
