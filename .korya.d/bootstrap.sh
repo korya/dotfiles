@@ -96,12 +96,14 @@ run_korya_script macos.sh
 step "Editor plugins"
 if command -v vim >/dev/null 2>&1; then
   log "Installing vim-plug plugins (headless)..."
-  vim +PlugInstall +qall && ok "vim plugins installed." \
+  # --sync so install finishes before quit; qall! + </dev/null so a stray
+  # startup prompt can never block the bootstrap.
+  vim +'PlugInstall --sync' +qall! </dev/null && ok "vim plugins installed." \
     || warn "vim plugin install hiccup — run ':PlugInstall' by hand."
 fi
 if command -v nvim >/dev/null 2>&1; then
   log "Syncing LazyVim plugins (headless)..."
-  nvim --headless "+Lazy! sync" +qa && ok "nvim plugins synced." \
+  nvim --headless "+Lazy! sync" +qa </dev/null && ok "nvim plugins synced." \
     || warn "nvim plugin sync hiccup — open nvim to finish."
 fi
 
