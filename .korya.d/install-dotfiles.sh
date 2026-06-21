@@ -8,16 +8,25 @@
 # move every file the repo tracks out of the way (into a timestamped backup)
 # and only then check the branch out clean.
 #
-# Idempotent: re-running just fast-forwards the already-initialized repo.
+# On a machine that already has the dotfiles, this refuses to touch them.
+#
+# Run with DEBUG=1 to trace every command.
 #
 set -euo pipefail
 
 REPO="${DOTFILES_REPO:-https://github.com/korya/dotfiles}"
 BRANCH="${DOTFILES_BRANCH:-master}"
 
+# --- logging ---
+log()  { printf '\033[0;34m▸\033[0m %s\n' "$*"; }
+ok()   { printf '\033[0;32m✓\033[0m %s\n' "$*"; }
+warn() { printf '\033[0;33m! %s\033[0m\n' "$*" >&2; }
+[ -n "${DEBUG:-}" ] && set -x
+
 # Normalize a git URL (https or ssh, with/without .git) to "owner/repo".
 slug() { printf '%s\n' "$1" | sed -E 's#\.git$##; s#^.*[/:]([^/]+/[^/]+)$#\1#'; }
 
+log "Installing $(slug "$REPO") (branch: $BRANCH) into \$HOME ($HOME)"
 cd "$HOME"
 
 # --- Already a git repo? Don't touch it. ---
@@ -26,36 +35,47 @@ cd "$HOME"
 # changes — silently switching branches or hard-resetting would be destructive.
 # So we refuse and let the user update on their own terms.
 if [ -d "$HOME/.git" ]; then
+  log "\$HOME is already a git repo — inspecting its origin..."
   existing="$(git remote get-url origin 2>/dev/null || true)"
   if [ -n "$existing" ] && [ "$(slug "$existing")" = "$(slug "$REPO")" ]; then
-    echo "\$HOME is already a checkout of $(slug "$REPO") — nothing to do."
-    echo "To update, manage it yourself, e.g.: git -C \"\$HOME\" pull"
+    ok "Already a checkout of $(slug "$REPO") — nothing to do."
+    log "To update, manage it yourself, e.g.: git -C \"\$HOME\" pull"
     exit 0
   fi
-  echo "Refusing: \$HOME is already a git repo (origin: ${existing:-none})." >&2
-  echo "Move it aside or install manually if that's intentional." >&2
+  warn "Refusing: \$HOME is a git repo for a different origin (${existing:-none})."
+  warn "Move it aside or install manually if that's intentional."
   exit 1
 fi
 
 # --- Fresh install. ---
+log "Initializing git in \$HOME and wiring up the remote..."
 [ -d .git ] || git init -q
 git remote add origin "$REPO" 2>/dev/null || git remote set-url origin "$REPO"
+
+log "Fetching origin/$BRANCH..."
 git fetch -q origin "$BRANCH"
 
 # Move aside any pre-existing files the checkout would clobber.
+log "Backing up any pre-existing tracked files..."
 backup="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
+n=0
 while IFS= read -r f; do
   [ -e "$HOME/$f" ] || continue
   mkdir -p "$backup/$(dirname "$f")"
   mv "$HOME/$f" "$backup/$f"
+  log "  backed up: $f"
+  n=$((n + 1))
 done < <(git ls-tree -r --name-only "origin/$BRANCH")
+if [ "$n" -gt 0 ]; then
+  log "Moved $n pre-existing file(s) to $backup"
+else
+  log "No pre-existing files to back up."
+fi
 
 # Adopt the branch (safe now — nothing left to conflict with).
-git checkout -B "$BRANCH" "origin/$BRANCH"
+log "Checking out $BRANCH into \$HOME..."
+git checkout -B "$BRANCH" "origin/$BRANCH" >/dev/null 2>&1
 git branch --set-upstream-to="origin/$BRANCH" "$BRANCH" >/dev/null 2>&1 || true
 
-if [ -d "$backup" ]; then
-  echo "Done. Pre-existing files backed up to: $backup"
-else
-  echo "Done."
-fi
+ok "Dotfiles installed."
+[ "$n" -gt 0 ] && log "Your previous files are preserved in: $backup"
