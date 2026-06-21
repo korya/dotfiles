@@ -15,16 +15,26 @@ set -euo pipefail
 REPO="${DOTFILES_REPO:-https://github.com/korya/dotfiles}"
 BRANCH="${DOTFILES_BRANCH:-master}"
 
+# Normalize a git URL (https or ssh, with/without .git) to "owner/repo".
+slug() { printf '%s\n' "$1" | sed -E 's#\.git$##; s#^.*[/:]([^/]+/[^/]+)$#\1#'; }
+
 cd "$HOME"
 
-# --- Already set up? Just update and bail. ---
-if [ -d "$HOME/.git" ] && git rev-parse --verify -q HEAD >/dev/null 2>&1; then
-  echo "Dotfiles repo already initialized — fast-forwarding."
-  git fetch -q origin "$BRANCH"
-  git checkout -q "$BRANCH"
-  git pull -q --ff-only origin "$BRANCH" \
-    || echo "Could not fast-forward; resolve manually with 'git status'." >&2
-  exit 0
+# --- Already a git repo? Don't touch it. ---
+# This installer is for a *fresh* machine. On a machine that already has the
+# dotfiles checked out into $HOME — possibly on a personal branch with local
+# changes — silently switching branches or hard-resetting would be destructive.
+# So we refuse and let the user update on their own terms.
+if [ -d "$HOME/.git" ]; then
+  existing="$(git remote get-url origin 2>/dev/null || true)"
+  if [ -n "$existing" ] && [ "$(slug "$existing")" = "$(slug "$REPO")" ]; then
+    echo "\$HOME is already a checkout of $(slug "$REPO") — nothing to do."
+    echo "To update, manage it yourself, e.g.: git -C \"\$HOME\" pull"
+    exit 0
+  fi
+  echo "Refusing: \$HOME is already a git repo (origin: ${existing:-none})." >&2
+  echo "Move it aside or install manually if that's intentional." >&2
+  exit 1
 fi
 
 # --- Fresh install. ---
