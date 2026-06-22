@@ -78,4 +78,9 @@ git checkout -B "$BRANCH" "origin/$BRANCH" >/dev/null 2>&1
 git branch --set-upstream-to="origin/$BRANCH" "$BRANCH" >/dev/null 2>&1 || true
 
 ok "Dotfiles installed."
-[ "$n" -gt 0 ] && log "Your previous files are preserved in: $backup"
+# NB: keep this an `if`, not `[ … ] && log` — the latter exits 1 when n=0
+# (the normal fresh-machine case), which aborts the set -e bootstrap caller.
+if [ "$n" -gt 0 ]; then
+  log "Your previous files are preserved in: $backup"
+fi
+exit 0
