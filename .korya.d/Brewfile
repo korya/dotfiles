@@ -38,6 +38,7 @@ brew "socat"          # multipurpose socket relay — netcat on steroids
 brew "git"
 brew "openssh"
 brew "python"
+brew "uv"             # extremely fast Python package installer & resolver (Rust)
 brew "rsync"
 brew "svn"            # subversion — still needed by some brew casks/legacy repos
 brew "unzip"
@@ -49,6 +50,7 @@ brew "watch"          # re-run a command periodically, full-screen
 # Crypto / security
 # ----------------------------------------------------------------------------
 brew "gpg2"           # GnuPG — referenced by ~/.gitconfig for commit signing
+brew "infisical"      # secret management CLI — inject secrets into env/processes
 
 # ----------------------------------------------------------------------------
 # Productivity / modern CLI
@@ -58,10 +60,17 @@ brew "just"           # command runner — a saner `make` for project tasks
 brew "ag"             # the_silver_searcher — fast recursive code grep
 brew "fzf"            # fuzzy finder (Ctrl-R / Ctrl-T); run its install once
 brew "zellij"         # terminal multiplexer (a friendlier tmux)
+brew "mprocs"         # run multiple commands in parallel in one TUI dashboard
 brew "gh"             # GitHub CLI — also used to upload the SSH key
 brew "bat"            # `cat` with syntax highlighting + git integration
 brew "dockutil"       # script the macOS Dock contents (used by macos.sh)
 brew "docker-credential-helper"  # stores Docker registry creds in the keychain
+
+# ----------------------------------------------------------------------------
+# Web app development
+# ----------------------------------------------------------------------------
+brew "bun"            # fast JS runtime, bundler, transpiler & package manager
+brew "vite-plus"      # unified toolchain & entry point for web development (`vp`)
 
 # ----------------------------------------------------------------------------
 # Editors
